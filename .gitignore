@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 HELP.md
 .gradle
 build/
@@ -40,6 +41,9 @@ src/main/resources/application-secret.yml
 
 db_dev.mv.db
 db_dev.trace.db
+=======
+<<<<<<< HEAD
+>>>>>>> 3e02266 (chore: 스프링 프로젝트 세팅)
 # Compiled class file
 *.class
 
@@ -63,4 +67,48 @@ db_dev.trace.db
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+<<<<<<< HEAD
 replay_pid*
+=======
+replay_pid*
+=======
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+src/main/resources/application-secret.yml
+>>>>>>> 3e02266 (chore: 스프링 프로젝트 세팅)

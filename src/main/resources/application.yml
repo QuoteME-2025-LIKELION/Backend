@@ -1,0 +1,56 @@
+server:
+  port: 8070
+spring:
+  output:
+    ansi:
+      enabled: ALWAYS
+  profiles:
+    active: dev
+    include: secret
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
+  datasource:
+    url: jdbc:mysql://localhost:3306/quoteme
+    username: admin
+    password: 1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jackson:
+    serialization:
+      fail-on-empty-beans: false
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100
+        format_sql: true
+        highlight_sql: true
+        use_sql_comments: true
+spring doc:
+  default-produces-media-type: application/json
+logging:
+  level:
+    com.ll.demo03: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.orm.jdbc.extract: TRACE
+    org.springframework.transaction.interceptor: TRACE
+custom:
+  dev:
+    cookieDomain: localhost
+    frontUrl: "http://${custom.dev.cookieDomain}:5173"
+    backUrl: "http://${custom.dev.cookieDomain}:${server.port}"
+  prod:
+    cookieDomain: www.surl.oa.gg
+    frontUrl: "https://${custom.prod.cookieDomain}"
+    backUrl: "https://api.${custom.prod.cookieDomain}"
+  site:
+    name: "QUOTEME DEV"
+    cookieDomain: "${custom.dev.cookieDomain}"
+    frontUrl: "${custom.dev.frontUrl}"
+    backUrl: "${custom.dev.backUrl}"
+  accessToken:
+    expirationSec: 600

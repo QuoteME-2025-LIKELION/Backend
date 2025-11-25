@@ -28,7 +28,7 @@ public class Member extends BaseTime {
     private String password;
 
     @Size(max = 10, message = "닉네임은 10자 이내여야 합니다.")
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String nickname;
 
     @Size(min = 4, max = 4, message = "출생년도는 4자리로 입력해주세요.")

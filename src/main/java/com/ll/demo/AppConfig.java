@@ -11,4 +11,9 @@ public class AppConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+    public static int getAccessTokenExpirationSec() {
+        //
+        return 3600;
+    }
 }

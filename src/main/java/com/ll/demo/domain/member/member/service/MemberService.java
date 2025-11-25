@@ -26,7 +26,7 @@ public class MemberService {
 
     // 회원가입
     @Transactional
-    public RsData<Member> join(String email, String password, String nickname, Int birthYear) {
+    public RsData<Member> join(String email, String password, Integer birthYear) {
         // 이메일 중복 체크
         findByEmail(email).ifPresent(ignored -> {
             throw new GlobalException("400-1", "이미 존재하는 이메일");
@@ -36,8 +36,7 @@ public class MemberService {
         Member member = Member.builder()
                 .email(email)
                 .password(passwordEncoder.encode(password))  // 비밀번호 암호화
-                .nickname(nickname)
-                .birthYear(birthYear)
+                .birthYear(String.valueOf(birthYear))
                 .build();
         memberRepository.save(member);
         return RsData.of("회원가입 완료", member);
@@ -46,5 +45,11 @@ public class MemberService {
     // ID로 회원 조회?
     public Member getMemberById(long id) {
         return memberRepository.findById(id).orElseThrow(() -> new GlobalException("400-2", "회원이 존재하지 않습니다."));
+    }
+
+    // findByRefreshToken 메서드
+    public java.util.Optional<Member> findByRefreshToken(String refreshToken) {
+        //
+        return java.util.Optional.empty();
     }
 }

@@ -1,0 +1,9 @@
+review:
+  language: Korean
+  enabled: true
+  configuration:
+    - rules:
+        - name: code-style
+          pattern: "**/*.java"
+        - name: function-names
+          pattern: "**/*.js"

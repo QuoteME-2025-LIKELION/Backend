@@ -29,6 +29,8 @@ public class SecurityConfig {
                                 .permitAll()
                                 .requestMatchers(HttpMethod.DELETE, "/api/*/members/logout")
                                 .permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/quotes")
+                                .permitAll()
                                 .requestMatchers("/h2-console/**")
                                 .permitAll()
                                 .requestMatchers("/actuator/**")

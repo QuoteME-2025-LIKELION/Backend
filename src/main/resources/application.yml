@@ -54,3 +54,5 @@ custom:
     backUrl: "${custom.dev.backUrl}"
   accessToken:
     expirationSec: 600
+  secret:
+    key: "abcdefg123456789"

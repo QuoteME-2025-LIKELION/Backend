@@ -1,33 +1,58 @@
 package com.ll.demo.global.security;
 
+import com.ll.demo.domain.member.member.entity.Member;
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.Jwts;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import com.ll.demo.domain.member.member.entity.Member;
+import java.security.Key;
+import java.time.Instant;
+import java.util.Date;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AuthTokenService {
+    @Value("${custom.secret.jwt.secretKey}")
+    private String secretKey;
 
-    // 나중에 secret key, jwt토큰 발행 및 로직 구현
-
-    // 임시
-    public boolean validateToken(String token) {
-        log.info("토큰 검증 요청: {}", token);
-        // 실제 로직
-        return true;
+    private Key getSigningKey() {
+        return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
-    // 토큰 생성
+    // Access Token 생성
     public String genToken(Member member, int expirationSec) {
-        //
-        return "";
+        Date expiration = Date.from(Instant.now().plusSeconds(expirationSec));
+
+        return Jwts.builder()
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .setExpiration(expiration)
+                .claim("id", member.getId())
+                .compact();
+    }
+
+    // 토큰 유효성 검증
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // 토큰에서 데이터 추출
-    public java.util.Map<String, Object> getDataFrom(String token) {
-        //
-        return new java.util.HashMap<>();
+    public Map<String, Object> getDataFrom(String token) {
+        Jws<Claims> claims = Jwts.parser()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token);
+
+        return claims.getBody();
     }
 }

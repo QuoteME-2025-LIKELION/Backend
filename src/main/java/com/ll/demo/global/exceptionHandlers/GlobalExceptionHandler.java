@@ -1,7 +1,7 @@
 package com.ll.demo.global.exceptionHandlers;
 
 import com.ll.demo.global.exceptions.GlobalException;
-import com.ll.demo.global.rq.Rq;
+import com.ll.demo.standard.rq.Rq;
 import com.ll.demo.global.rsData.RsData;
 import com.ll.demo.standard.dto.Empty;
 import lombok.RequiredArgsConstructor;

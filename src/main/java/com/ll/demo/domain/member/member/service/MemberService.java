@@ -20,6 +20,7 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
 
     // 이메일로 회원 조회
+    @Transactional(readOnly = true)
     public Optional<Member> findByEmail(String email) {
         return memberRepository.findByEmail(email);
     }
@@ -43,13 +44,20 @@ public class MemberService {
     }
 
     // ID로 회원 조회?
+    @Transactional(readOnly = true)
     public Member getMemberById(long id) {
         return memberRepository.findById(id).orElseThrow(() -> new GlobalException("400-2", "회원이 존재하지 않습니다."));
     }
 
-    // findByRefreshToken 메서드
+    // RefreshToken 메서드
+    @Transactional
     public java.util.Optional<Member> findByRefreshToken(String refreshToken) {
-        //
-        return java.util.Optional.empty();
+        return memberRepository.findByRefreshToken(refreshToken);
+    }
+
+    // 비번 일치 확인 메서드
+    @Transactional(readOnly = true)
+    public boolean checkPassword(Member member, String rawPassword) {
+        return passwordEncoder.matches(rawPassword, member.getPassword());
     }
 }

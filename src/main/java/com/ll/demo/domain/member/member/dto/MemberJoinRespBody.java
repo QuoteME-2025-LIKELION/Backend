@@ -1,5 +1,4 @@
-package com.ll.demo.domain.member.member.controller;
-
+package com.ll.demo.domain.member.member.dto;
 import com.ll.demo.domain.member.member.entity.Member;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -8,5 +7,5 @@ import lombok.Getter;
 @AllArgsConstructor
 public class MemberJoinRespBody {
 
-    private Member item;  // 회원가입 후 생성된 회원 정보 받
+    private MemberDto item;  // 엔티티>DTO로 변경
 }

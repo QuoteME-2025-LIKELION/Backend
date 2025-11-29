@@ -23,7 +23,7 @@ public class Member extends BaseTime {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Size(min = 6, message = "비밀번호는 최소 8자 이상이어야 합니다.")
+    @Size(min = 8, message = "비밀번호는 최소 8자 이상이어야 합니다.")
     @Column(nullable = false)  // 비밀번호는 필수
     private String password;
 
@@ -42,7 +42,6 @@ public class Member extends BaseTime {
     @Column(length = 255)
     private String bio;
 
-    public String getName() {
-        return nickname;
-    }
+    @Column(nullable = true, length = 255)
+    private String refreshToken;
 }

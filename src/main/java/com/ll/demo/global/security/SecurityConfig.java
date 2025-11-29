@@ -10,6 +10,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 @RequiredArgsConstructor
@@ -23,7 +25,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorizeHttpRequests ->
                         authorizeHttpRequests
                                 // 회원가입에 대해 인증 없이 접근 허용
-                                .requestMatchers(HttpMethod.POST, "/api/auth/signup")
+                                .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login")
                                 .permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/*/members", "/api/*/members/login")
                                 .permitAll()

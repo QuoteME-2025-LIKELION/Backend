@@ -9,19 +9,16 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -83,8 +80,24 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
             Map<String, Object> accessTokenData = authTokenService.getDataFrom(accessToken);
             long id = Long.parseLong(accessTokenData.get("id").toString());
 
-            User user = new User(id + "", "", List.of());
-            Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+            // 1. DB에서 실제 회원 조회 (SecurityUser에는 Member 객체가 통째로 필요함)
+            Member member = (Member) memberService.findById(id).orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
+
+            // 2. SecurityUser 생성 (VIP 티켓 발급)
+            // (비밀번호는 공란 "", 권한은 member.getAuthorities() 사용)
+            SecurityUser securityUser = new SecurityUser(
+                    member,
+                    member.getUsername(),
+                    "",
+                    member.getAuthorities()
+            );
+
+            // 3. 인증 객체에 SecurityUser 넣기
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    securityUser,
+                    null,
+                    securityUser.getAuthorities()
+            );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }

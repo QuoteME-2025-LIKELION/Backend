@@ -5,12 +5,14 @@ import com.ll.demo.domain.quote.dto.QuoteCreateRequest;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.service.QuoteService;
 import com.ll.demo.global.gemini.GeminiService;
+import com.ll.demo.global.security.SecurityUser;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.User;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,13 +34,12 @@ public class QuoteController {
     @PostMapping
     public ResponseEntity<QuoteResponse> createQuote(
             @RequestBody QuoteCreateRequest request,
-            @AuthenticationPrincipal User user
+            @AuthenticationPrincipal SecurityUser user // ★ [변경 1] User -> SecurityUser
     ) {
-        // 1. 토큰에서 사용자 ID 추출 (프로젝트 설정에 따라 user.getUsername() 형식이 다를 수 있음)
-        Long authorId = Long.valueOf(user.getUsername());
+        // ★ [변경 2] 이메일(String)을 파싱하는 게 아니라, 진짜 멤버 ID(Long)를 바로 꺼냅니다.
+        Long authorId = user.getMember().getId();
 
         // 2. Service 호출
-        // ★ 중요: Service의 createQuote(Long authorId, String content) 순서에 맞춰서 값을 넘겨줍니다.
         QuoteResponse response = quoteService.createQuote(authorId, request.getContent());
 
         // 3. 결과 반환
@@ -49,5 +50,24 @@ public class QuoteController {
     public ResponseEntity<Map<String, String>> summarizeQuote(@RequestBody AiSummaryReq req) {
         String summary = geminiService.summarize(req.content());
         return ResponseEntity.ok(Map.of("summary", summary));
+    }
+    // 좋아요 등록 (POST)
+    @PostMapping("/{quoteId}/like")
+    public ResponseEntity<Void> likeQuote(
+            @PathVariable Long quoteId,
+            @AuthenticationPrincipal SecurityUser securityUser
+    ) {
+        quoteService.likeQuote(securityUser.getMember(), quoteId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 좋아요 취소 (DELETE)
+    @DeleteMapping("/{quoteId}/like")
+    public ResponseEntity<Void> unlikeQuote(
+            @PathVariable Long quoteId,
+            @AuthenticationPrincipal SecurityUser securityUser
+    ) {
+        quoteService.unlikeQuote(securityUser.getMember(), quoteId);
+        return ResponseEntity.ok().build();
     }
 }

@@ -43,4 +43,6 @@ public class Quote {
         this.content = content;
         this.authorId = authorId;
     }
+
+
 }

@@ -4,12 +4,11 @@ import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.rsData.RsData;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -60,4 +59,10 @@ public class MemberService {
     public boolean checkPassword(Member member, String rawPassword) {
         return passwordEncoder.matches(rawPassword, member.getPassword());
     }
+
+    public Optional<Member> findById(long id) {
+        return memberRepository.findById(id);
+    }
+
+
 }

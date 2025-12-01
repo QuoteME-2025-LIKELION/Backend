@@ -1,8 +1,11 @@
 package com.ll.demo.domain.quote.controller;
 
+import com.ll.demo.domain.quote.dto.AiSummaryReq;
 import com.ll.demo.domain.quote.dto.QuoteCreateRequest;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.service.QuoteService;
+import com.ll.demo.global.gemini.GeminiService;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class QuoteController {
 
+    private final GeminiService geminiService;
     private final QuoteService quoteService;
 
     /**
@@ -39,5 +43,11 @@ public class QuoteController {
 
         // 3. 결과 반환
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/summarize")
+    public ResponseEntity<Map<String, String>> summarizeQuote(@RequestBody AiSummaryReq req) {
+        String summary = geminiService.summarize(req.content());
+        return ResponseEntity.ok(Map.of("summary", summary));
     }
 }

@@ -21,8 +21,11 @@ public class Quote {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String content;
+    @Column(nullable = false)
+    private String content; // 최종 명언 (예: "가끔은 쉬어 갈 때도 필요하다")
+
+    @Column(columnDefinition = "TEXT")
+    private String originalContent; // (옵션) 원본 일기 내용. null일 수 있음.
 
     // 현재는 id값만 저장하지만, 추후 Member 엔티티와 연관관계 매핑을 권장합니다.
     // @ManyToOne(fetch = FetchType.LAZY)

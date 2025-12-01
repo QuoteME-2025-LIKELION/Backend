@@ -1,14 +1,22 @@
 package com.ll.demo.domain.member.member.entity;
 
+import static lombok.AccessLevel.PROTECTED;
+
 import com.ll.demo.global.jpa.entity.BaseTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
-import lombok.*;
-
-import static lombok.AccessLevel.PROTECTED;
+import java.util.Collection;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @Entity
 @Table(name = "members")
@@ -44,4 +52,13 @@ public class Member extends BaseTime {
 
     @Column(nullable = true, length = 255)
     private String refreshToken;
+
+    public String getUsername() {
+        return this.email;
+    }
+
+    // 2. 시큐리티가 "권한(authorities) 주세요" 하면 "일반 유저(ROLE_USER)"라고 답합니다.
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+    }
 }

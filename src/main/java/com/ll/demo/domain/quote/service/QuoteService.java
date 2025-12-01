@@ -1,6 +1,5 @@
 package com.ll.demo.domain.quote.service;
 
-import com.ll.demo.domain.quote.dto.QuoteCreateRequest;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
@@ -21,15 +20,16 @@ public class QuoteService {
 
     private final QuoteRepository quoteRepository;
 
+    // ★ Controller에서 authorId와 content를 따로 넘겨주므로, 여기서도 따로 받아야 합니다.
     @Transactional
-    public QuoteResponse createQuote(QuoteCreateRequest request) {
+    public QuoteResponse createQuote(Long authorId, String content) {
         // 1. 1일 1Quote 제한 체크
-        validateOneQuotePerDay(request.getAuthorId());
+        validateOneQuotePerDay(authorId);
 
         // 2. 저장
         Quote quote = Quote.builder()
-                .authorId(request.getAuthorId())
-                .content(request.getContent())
+                .authorId(authorId)
+                .content(content)
                 .build();
 
         Quote savedQuote = quoteRepository.save(quote);

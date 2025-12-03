@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import java.util.List;
+import org.springframework.data.domain.Sort;
 
 @Service
 @RequiredArgsConstructor
@@ -73,5 +75,13 @@ public class QuoteService {
 
         quoteLikeRepository.findByQuoteAndMember(quote, member)
                 .ifPresent(quoteLikeRepository::delete);
+    }
+
+    // 글 목록 조회 메서드 - mj
+    public List<QuoteResponse> getQuoteList() {
+        List<Quote> quotes = quoteRepository.findAll(Sort.by(Sort.Direction.DESC, "createDate"));
+        return quotes.stream()
+                .map(QuoteResponse::from)
+                .toList();
     }
 }

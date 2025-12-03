@@ -1,21 +1,23 @@
 package com.ll.demo.domain.quote.service;
 
 import com.ll.demo.domain.member.member.entity.Member;
+import com.ll.demo.domain.member.member.repository.MemberRepository; // [추가] 필수!
 import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
 import com.ll.demo.domain.quote.repository.QuoteLikeRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
-import org.springframework.data.domain.Sort;
 
 @Service
 @RequiredArgsConstructor
@@ -24,22 +26,29 @@ public class QuoteService {
 
     private final QuoteRepository quoteRepository;
     private final QuoteLikeRepository quoteLikeRepository;
+    private final MemberRepository memberRepository; // ★ [수정] 이게 없어서 에러가 났었습니다!
 
-    // ★ Controller에서 authorId와 content를 따로 넘겨주므로, 여기서도 따로 받아야 합니다.
+    // 명언 작성 (저장)
     @Transactional
-    public QuoteResponse createQuote(Long authorId, String content) {
-        // 1. 1일 1Quote 제한 체크
+    public QuoteResponse createQuote(Long authorId, String content, String originalContent) {
+        // 1. 1일 1명언 제한 체크
         validateOneQuotePerDay(authorId);
 
-        // 2. 저장
+        // 2. 회원(Member) 조회
+        // (이제 위에서 memberRepository를 선언했으므로 에러가 안 납니다)
+        Member author = memberRepository.findById(authorId)
+                .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
+
+        // 3. 빌더 패턴으로 명언 객체 생성
         Quote quote = Quote.builder()
-                .authorId(authorId)
+                .author(author)
                 .content(content)
+                .originalContent(originalContent) // 원본 일기 내용도 저장
                 .build();
 
-        Quote savedQuote = quoteRepository.save(quote);
+        quoteRepository.save(quote);
 
-        return QuoteResponse.from(savedQuote);
+        return new QuoteResponse(quote);
     }
 
     private void validateOneQuotePerDay(Long authorId) {
@@ -53,12 +62,12 @@ public class QuoteService {
         }
     }
 
+    // 좋아요 등록
     @Transactional
     public void likeQuote(Member member, Long quoteId) {
         Quote quote = quoteRepository.findById(quoteId)
                 .orElseThrow(() -> new RuntimeException("명언을 찾을 수 없습니다."));
 
-        // 이미 좋아요를 눌렀다면 중복 처리 하지 않음 (또는 에러 처리)
         if (quoteLikeRepository.existsByQuoteAndMember(quote, member)) {
             return;
         }
@@ -67,7 +76,7 @@ public class QuoteService {
         quoteLikeRepository.save(quoteLike);
     }
 
-    // 2. 좋아요 취소
+    // 좋아요 취소
     @Transactional
     public void unlikeQuote(Member member, Long quoteId) {
         Quote quote = quoteRepository.findById(quoteId)
@@ -77,11 +86,33 @@ public class QuoteService {
                 .ifPresent(quoteLikeRepository::delete);
     }
 
-    // 글 목록 조회 메서드 - mj
+    // 전체 명언 목록 조회 (단순 리스트)
     public List<QuoteResponse> getQuoteList() {
         List<Quote> quotes = quoteRepository.findAll(Sort.by(Sort.Direction.DESC, "createDate"));
         return quotes.stream()
                 .map(QuoteResponse::from)
+                .toList();
+    }
+
+    // 1. 나의 명언 목록 가져오기
+    public List<QuoteResponse> findMyQuotes(Long authorId) {
+        List<Quote> quotes = quoteRepository.findAllByAuthorIdOrderByCreateDateDesc(authorId);
+
+        // ★ 여기서(Service 내부) 변환해야 DB 연결이 유지된 상태로 닉네임을 가져올 수 있음
+        return quotes.stream()
+                .map(QuoteResponse::new)
+                .toList();
+    }
+
+    // 2. 특정 날짜의 전체 명언 가져오기
+    public List<QuoteResponse> findQuotesByDate(LocalDate date) {
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
+
+        List<Quote> quotes = quoteRepository.findAllByCreateDateBetweenOrderByCreateDateDesc(startOfDay, endOfDay);
+
+        return quotes.stream()
+                .map(QuoteResponse::new)
                 .toList();
     }
 }

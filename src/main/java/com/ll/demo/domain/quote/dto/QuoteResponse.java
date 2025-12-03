@@ -1,25 +1,28 @@
 package com.ll.demo.domain.quote.dto;
 
 import com.ll.demo.domain.quote.entity.Quote;
-import lombok.Builder;
-import lombok.Getter;
-
 import java.time.LocalDateTime;
 
-@Getter
-@Builder
-public class QuoteResponse {
-    private Long id;
-    private String content;
-    private Long authorId;
-    private LocalDateTime createDate;
+public record QuoteResponse(
+        Long id,
+        String content,
+        String originalContent,
+        String authorName,
+        LocalDateTime createDate
+) {
+    // Service에서 new QuoteResponse(quote)를 쓸 수 있게 해주는 생성자
+    public QuoteResponse(Quote quote) {
+        this(
+                quote.getId(),
+                quote.getContent(),
+                quote.getOriginalContent(),
+                quote.getAuthor().getNickname(),
+                quote.getCreateDate()
+        );
+    }
 
+    // (옵션) 기존 코드에 static 메서드가 있었다면 유지
     public static QuoteResponse from(Quote quote) {
-        return QuoteResponse.builder()
-                .id(quote.getId())
-                .content(quote.getContent())
-                .authorId(quote.getAuthorId())
-                .createDate(quote.getCreateDate())
-                .build();
+        return new QuoteResponse(quote);
     }
 }

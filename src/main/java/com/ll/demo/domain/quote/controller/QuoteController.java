@@ -6,6 +6,7 @@ import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.service.QuoteService;
 import com.ll.demo.global.gemini.GeminiService;
 import com.ll.demo.global.security.SecurityUser;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,8 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import java.util.List;
-import org.springframework.data.domain.Sort;
 
 
 @RestController
@@ -44,7 +43,11 @@ public class QuoteController {
         Long authorId = user.getMember().getId();
 
         // 2. Service 호출
-        QuoteResponse response = quoteService.createQuote(authorId, request.getContent());
+        QuoteResponse response = quoteService.createQuote(
+                authorId,
+                request.content(),        // 명언 (또는 짧은 글)
+                request.originalContent() // 원본 일기 (없으면 null 들어옴)
+        );
 
         // 3. 결과 반환
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

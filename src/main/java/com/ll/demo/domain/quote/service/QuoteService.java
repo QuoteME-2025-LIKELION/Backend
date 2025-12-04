@@ -96,7 +96,7 @@ public class QuoteService {
                 .toList();
     }
 
-    // Quote에 태그 요청하는 메서드 - mj
+    // 명언에 태그 요청하는 메서드 - mj
     @Transactional
     public void tagRequestQuote(Member requester, Long quoteId) {
         Quote quote = quoteRepository.findById(quoteId)

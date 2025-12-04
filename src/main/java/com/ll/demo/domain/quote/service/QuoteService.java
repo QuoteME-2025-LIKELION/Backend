@@ -24,6 +24,7 @@ public class QuoteService {
 
     private final QuoteRepository quoteRepository;
     private final QuoteLikeRepository quoteLikeRepository;
+    private final QuoteTagRequestRepository quoteTagRequestRepository;
 
     // ★ Controller에서 authorId와 content를 따로 넘겨주므로, 여기서도 따로 받아야 합니다.
     @Transactional
@@ -83,5 +84,29 @@ public class QuoteService {
         return quotes.stream()
                 .map(QuoteResponse::from)
                 .toList();
+    }
+
+    // Quote에 태그 요청하는 메서드 - mj
+    @Transactional
+    public void tagRequestQuote(Member requester, Long quoteId) {
+        Quote quote = quoteRepository.findById(quoteId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "명언을 찾을 수 없습니다."));
+
+        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 해당 글에 태그 요청을 하셨습니다.");
+        }
+
+        // 자기 글에 요청하는지 체크
+        // 지금은 임시로 ID로 비교한다 가정
+        if (requester.getId().equals(quote.getAuthorId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인 글에는 태그 요청을 할 수 없습니다.");
+        }
+
+        QuoteTagRequest tagRequest = QuoteTagRequest.builder()
+                .quote(quote)
+                .requester(requester)
+                .build();
+
+        quoteTagRequestRepository.save(tagRequest);
     }
 }

@@ -75,11 +75,21 @@ public class QuoteController {
         return ResponseEntity.ok().build();
     }
 
-    // 글 목록 조회
+    // 글 목록 조회 - mj
     @GetMapping
     public ResponseEntity<List<QuoteResponse>> getQuotes() {
         List<QuoteResponse> response = quoteService.getQuoteList();
         return ResponseEntity.ok(response);
+    }
+
+    // 태그 요청 등록 - mj
+    @PostMapping("/{quoteId}/tag-request")
+    public ResponseEntity<Void> tagRequestQuote(
+            @PathVariable Long quoteId,
+            @AuthenticationPrincipal SecurityUser securityUser
+    ) { Member requester = securityUser.getMember();
+        quoteService.tagRequestQuote(requester, quoteId);
+        return ResponseEntity.ok().build();
     }
 
 }

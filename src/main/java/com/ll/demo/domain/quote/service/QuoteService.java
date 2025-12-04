@@ -7,12 +7,15 @@ import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
 import com.ll.demo.domain.quote.repository.QuoteLikeRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
+import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.ll.demo.domain.quote.entity.QuoteTagRequest;
+import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -108,7 +111,7 @@ public class QuoteService {
 
         // 자기 글에 요청하는지 체크
         // 지금은 임시로 ID로 비교한다 가정
-        if (requester.getId().equals(quote.getAuthorId())) {
+        if (requester.getId().equals(quote.getAuthor().getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인 글에는 태그 요청을 할 수 없습니다.");
         }
 

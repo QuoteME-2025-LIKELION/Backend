@@ -9,6 +9,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ll.demo.domain.member.member.dto.ProfileResponse;
+import com.ll.demo.domain.member.member.dto.ProfileUpdateRequest;
+import com.ll.demo.domain.member.member.dto.MemberSearchResponse;
+import com.ll.demo.domain.member.member.dto.FriendResponse;
+import com.ll.demo.domain.member.member.repository.FriendshipRepository;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Collections;
+import com.ll.demo.domain.member.member.entity.Friendship;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +26,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FriendshipRepository friendshipRepository;
 
     // 이메일로 회원 조회
     @Transactional(readOnly = true)
@@ -64,5 +74,61 @@ public class MemberService {
         return memberRepository.findById(id);
     }
 
+    // 내 프로필 조회
+    public ProfileResponse getProfile(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
+
+        return ProfileResponse.of(member);
+    }
+
+    // 프로필 정보 수정
+    @Transactional
+    public void updateProfile(Long memberId, ProfileUpdateRequest request) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
+
+        String newProfileImageUrl = member.getProfileImage(); // 기존 URL 유지
+
+        if (request.getProfileImage() != null && !request.getProfileImage().isEmpty()) {
+            // 임시 파일 업로드 로직 - !재검토 필요!
+            // String uploadedUrl = fileStorageService.upload(request.getProfileImage());
+            // newProfileImageUrl = uploadedUrl;
+            newProfileImageUrl = "/images/profile/" + memberId + "_new_image.jpg"; // 임시 URL
+        }
+        // 기존 이미지 삭제?
+
+        member.setNickname(request.getNickname());
+        member.setIntroduction(request.getIntroduction());
+        member.setProfileImage(newProfileImageUrl);
+    }
+    // 닉네임 or 이메일로 회원 검색
+    // 친구 목록 조회 + 친구 검색
+    public List<MemberSearchResponse> searchMembers(String keyword, Long currentMemberId) {
+
+        List<Member> members = memberRepository
+                .searchMembersByNicknameOrEmailUsername(keyword);
+
+        List<Member> filteredMembers = members.stream()
+                .filter(m -> !m.getId().equals(currentMemberId))
+                .toList();
+
+        return filteredMembers.stream()
+                .map(MemberSearchResponse::of)
+                .toList();
+    }
+
+    // 친구 목록 조회
+    public List<FriendResponse> getFriendList(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
+
+        List<Friendship> friendships = friendshipRepository.findAllByMember(member);
+
+        return friendships.stream()
+                .map(Friendship::getFriend)
+                .map(FriendResponse::of)
+                .toList();
+    }
 
 }

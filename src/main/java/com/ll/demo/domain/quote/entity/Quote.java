@@ -12,7 +12,9 @@ import jakarta.persistence.ManyToOne;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
+@AllArgsConstructor
 @Entity
 @Getter
 @NoArgsConstructor(access = PROTECTED)
@@ -32,10 +34,11 @@ public class Quote extends BaseTime {
     @Column(columnDefinition = "TEXT")
     private String originalContent; // 원본 일기 내용
 
-    // 생성자에서 Member를 받아서 author 필드에 넣습니다.
-    public Quote(Member author, String content, String originalContent) {
-        this.author = author;
-        this.content = content;
-        this.originalContent = originalContent;
-    }
+    // @AllArgsConstructor 사용으로 제거했습니다 - mj
+//    // 생성자에서 Member를 받아서 author 필드에 넣습니다.
+//    public Quote(Member author, String content, String originalContent) {
+//        this.author = author;
+//        this.content = content;
+//        this.originalContent = originalContent;
+//    }
 }

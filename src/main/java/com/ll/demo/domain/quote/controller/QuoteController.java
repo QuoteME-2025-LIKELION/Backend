@@ -1,5 +1,6 @@
 package com.ll.demo.domain.quote.controller;
 
+import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.quote.dto.AiSummaryReq;
 import com.ll.demo.domain.quote.dto.QuoteCreateRequest;
 import com.ll.demo.domain.quote.dto.QuoteResponse;

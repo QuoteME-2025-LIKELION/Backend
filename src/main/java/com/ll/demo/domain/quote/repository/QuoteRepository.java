@@ -1,9 +1,11 @@
 package com.ll.demo.domain.quote.repository;
 
 import com.ll.demo.domain.quote.entity.Quote;
+import io.lettuce.core.dynamic.annotation.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface QuoteRepository extends JpaRepository<Quote, Long> {
     // 1. 나의 명언 조회 (최신순)
@@ -14,4 +16,7 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
 
     // 1일 1명언 체크용
     boolean existsByAuthorIdAndCreateDateBetween(Long authorId, LocalDateTime start, LocalDateTime end);
+
+    @Query("select ql.quote from QuoteLike ql where ql.member.id = :memberId order by ql.id desc")
+    List<Quote> findQuotesLikedByMember(@Param("memberId") Long memberId);
 }

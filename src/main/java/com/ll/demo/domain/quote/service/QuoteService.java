@@ -1,28 +1,25 @@
 package com.ll.demo.domain.quote.service;
 
 import com.ll.demo.domain.member.member.entity.Member;
-import com.ll.demo.domain.member.member.repository.MemberRepository; // [추가] 필수!
+import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
+import com.ll.demo.domain.quote.entity.QuoteTagRequest;
 import com.ll.demo.domain.quote.repository.QuoteLikeRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
 import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
+import com.ll.demo.global.exceptions.GlobalException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import com.ll.demo.domain.quote.entity.QuoteTagRequest;
-import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
-import com.ll.demo.global.exceptions.GlobalException;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
-import org.springframework.data.domain.Sort;
 
 @Service
 @RequiredArgsConstructor
@@ -162,5 +159,16 @@ public class QuoteService {
                 .requester(requester)
                 .build();
         quoteTagRequestRepository.save(tagRequest);
+    }
+
+    // [추가] 좋아요한 글 목록 조회
+    public List<QuoteResponse> findLikedQuotes(Long memberId) {
+        // 1. DB에서 내가 좋아요한 Quote 목록 조회
+        List<Quote> likedQuotes = quoteRepository.findQuotesLikedByMember(memberId);
+
+        // 2. DTO로 변환
+        return likedQuotes.stream()
+                .map(QuoteResponse::new)
+                .toList();
     }
 }

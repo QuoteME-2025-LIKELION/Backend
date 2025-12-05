@@ -4,10 +4,11 @@ import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.quote.dto.AiSummaryReq;
 import com.ll.demo.domain.quote.dto.QuoteCreateRequest;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
+import com.ll.demo.domain.quote.dto.QuoteTagUpdateReq;
 import com.ll.demo.domain.quote.service.QuoteService;
 import com.ll.demo.global.gemini.GeminiService;
-import com.ll.demo.global.security.SecurityUser;
 import com.ll.demo.global.rsData.RsData;
+import com.ll.demo.global.security.SecurityUser;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -16,12 +17,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 
 @RestController
@@ -103,5 +105,17 @@ public class QuoteController {
         Member requester = securityUser.getMember();
         quoteService.requestTagToQuote(quoteId, requester);
         return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-3", "태그 요청이 명언 작성자에게 전송되었습니다."));
+    }
+
+    // 태그 수정 (PATCH)
+    // PATCH /api/quotes/{quoteId}/tags
+    @PatchMapping("/{quoteId}/tags")
+    public ResponseEntity<Void> updateTags(
+            @PathVariable Long quoteId,
+            @RequestBody QuoteTagUpdateReq req,
+            @AuthenticationPrincipal SecurityUser user
+    ) {
+        quoteService.updateTags(user.getMember().getId(), quoteId, req.taggedMemberIds());
+        return ResponseEntity.ok().build();
     }
 }

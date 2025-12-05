@@ -14,6 +14,9 @@ import com.ll.demo.domain.member.member.entity.Member;
 import java.util.List;
 import org.springframework.web.bind.annotation.RequestParam;
 import com.ll.demo.domain.member.member.dto.MemberSearchResponse;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
+
 
 @RestController
 @RequestMapping("/api/settings")
@@ -60,12 +63,16 @@ public class SettingsController {
     // 친구 목록
     @GetMapping("/friends-list")
     public ResponseEntity<List<FriendResponse>> getFriendsAndGroups(
-            @AuthenticationPrincipal Member member
+            @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        Long memberId = member.getId();
-
+        if (securityUser == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "401-1. 로그인 인증 정보가 유효하지 않습니다."
+            );
+        }
+        Long memberId = securityUser.getMember().getId();
         List<FriendResponse> response = memberService.getFriendList(memberId);
-
         return ResponseEntity.ok(response);
     }
 }

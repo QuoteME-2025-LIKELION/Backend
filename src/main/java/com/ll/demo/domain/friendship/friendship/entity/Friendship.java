@@ -1,14 +1,19 @@
-package com.ll.demo.domain.member.member.entity;
+package com.ll.demo.domain.friendship.friendship.entity;
 
+import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
 import com.ll.demo.global.jpa.entity.BaseTime;
 import jakarta.persistence.*;
 import lombok.*;
+import com.ll.demo.domain.member.member.entity.Member;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
 @Table(name = "friendships")
 public class Friendship extends BaseTime {
+
     // 나
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
@@ -19,11 +24,11 @@ public class Friendship extends BaseTime {
     @JoinColumn(name = "friend_id")
     private Member friend;
 
-    // 이후 상태 추가
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private FriendshipStatus status;
 
-    @Builder
-    public Friendship(Member member, Member friend) {
-        this.member = member;
-        this.friend = friend;
+    public void updateStatus(FriendshipStatus status) {
+        this.status = status;
     }
 }

@@ -13,11 +13,11 @@ import com.ll.demo.domain.member.member.dto.ProfileResponse;
 import com.ll.demo.domain.member.member.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.member.member.dto.MemberSearchResponse;
 import com.ll.demo.domain.member.member.dto.FriendResponse;
-import com.ll.demo.domain.member.member.repository.FriendshipRepository;
+import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Collections;
-import com.ll.demo.domain.member.member.entity.Friendship;
+import com.ll.demo.domain.friendship.friendship.entity.Friendship;
 
 @Service
 @RequiredArgsConstructor

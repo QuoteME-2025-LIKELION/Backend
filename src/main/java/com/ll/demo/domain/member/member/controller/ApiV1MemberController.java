@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -48,9 +49,6 @@ public class ApiV1MemberController {
         return joinRs.newDataOf(new MemberJoinRespBody(memberDto));
     }
 
-    // ==========================================
-    // ▼▼▼ [수정됨] 로그인 응답 DTO 추가 ▼▼▼
-    // ==========================================
     @Getter
     @AllArgsConstructor
     public static class LoginResponseBody {

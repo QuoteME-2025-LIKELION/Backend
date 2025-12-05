@@ -3,8 +3,6 @@ package com.ll.demo.domain.member.member.entity;
 import static lombok.AccessLevel.PROTECTED;
 
 import com.ll.demo.global.jpa.entity.BaseTime;
-import com.ll.demo.global.jpa.entity.BaseEntity;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -12,15 +10,13 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import java.util.Collection;
 import java.util.List;
-import java.time.LocalDateTime;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @Entity
 @Table(name = "members")
@@ -64,5 +60,12 @@ public class Member extends BaseTime {
     // 시큐리티 - 권한
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+
+    public String getName() {
+        if (this.nickname != null && !this.nickname.isBlank()) {
+            return this.nickname;
+        }
+        return this.email.split("@")[0]; // 예: test@naver.com -> test
     }
 }

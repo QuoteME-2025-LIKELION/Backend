@@ -2,6 +2,7 @@ package com.ll.demo.domain.quote.dto;
 
 import com.ll.demo.domain.quote.entity.Quote;
 import java.time.LocalDateTime;
+import lombok.Builder;
 
 public record QuoteResponse(
         Long id,

@@ -7,17 +7,21 @@ import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
 import com.ll.demo.domain.quote.repository.QuoteLikeRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
+import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.ll.demo.domain.quote.entity.QuoteTagRequest;
+import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import org.springframework.data.domain.Sort;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +31,7 @@ public class QuoteService {
     private final QuoteRepository quoteRepository;
     private final QuoteLikeRepository quoteLikeRepository;
     private final MemberRepository memberRepository; // ★ [수정] 이게 없어서 에러가 났었습니다!
+    private final QuoteTagRequestRepository quoteTagRequestRepository;
 
     // 명언 작성 (저장)
     @Transactional
@@ -92,6 +97,30 @@ public class QuoteService {
         return quotes.stream()
                 .map(QuoteResponse::from)
                 .toList();
+    }
+
+    // 명언에 태그 요청하는 메서드 - mj
+    @Transactional
+    public void tagRequestQuote(Member requester, Long quoteId) {
+        Quote quote = quoteRepository.findById(quoteId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "명언을 찾을 수 없습니다."));
+
+        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 해당 글에 태그 요청을 하셨습니다.");
+        }
+
+        // 자기 글에 요청하는지 체크
+        // 지금은 임시로 ID로 비교한다 가정
+        if (requester.getId().equals(quote.getAuthor().getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인 글에는 태그 요청을 할 수 없습니다.");
+        }
+
+        QuoteTagRequest tagRequest = QuoteTagRequest.builder()
+                .quote(quote)
+                .requester(requester)
+                .build();
+
+        quoteTagRequestRepository.save(tagRequest);
     }
 
     // 1. 나의 명언 목록 가져오기

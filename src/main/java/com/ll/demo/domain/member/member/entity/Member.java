@@ -3,6 +3,8 @@ package com.ll.demo.domain.member.member.entity;
 import static lombok.AccessLevel.PROTECTED;
 
 import com.ll.demo.global.jpa.entity.BaseTime;
+import com.ll.demo.global.jpa.entity.BaseEntity;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -10,13 +12,15 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import java.util.Collection;
 import java.util.List;
+import java.time.LocalDateTime;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @Entity
 @Table(name = "members")
@@ -32,7 +36,7 @@ public class Member extends BaseTime {
     private String email;
 
     @Size(min = 8, message = "비밀번호는 최소 8자 이상이어야 합니다.")
-    @Column(nullable = false)  // 비밀번호는 필수
+    @Column(nullable = false)
     private String password;
 
     @Size(max = 10, message = "닉네임은 10자 이내여야 합니다.")
@@ -43,12 +47,12 @@ public class Member extends BaseTime {
     @Column(nullable = false)
     private String birthYear;
 
-    @Column(length = 255)  // 프로필 사진 - 일단 URL
+    @Column(length = 255)
     private String profileImage;
 
     @Size(max = 30, message = "자기소개는 30자 이내로 작성해주세요.")
-    @Column(length = 255)
-    private String bio;
+    @Column(nullable = true)
+    private String introduction;
 
     @Column(nullable = true, length = 255)
     private String refreshToken;
@@ -57,7 +61,7 @@ public class Member extends BaseTime {
         return this.email;
     }
 
-    // 2. 시큐리티가 "권한(authorities) 주세요" 하면 "일반 유저(ROLE_USER)"라고 답합니다.
+    // 시큐리티 - 권한
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }

@@ -7,6 +7,7 @@ import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.service.QuoteService;
 import com.ll.demo.global.gemini.GeminiService;
 import com.ll.demo.global.security.SecurityUser;
+import com.ll.demo.global.rsData.RsData;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -86,14 +88,20 @@ public class QuoteController {
         return ResponseEntity.ok(response);
     }
 
-    // 태그 요청 등록 - mj
+    // 태그 요청
     @PostMapping("/{quoteId}/tag-request")
-    public ResponseEntity<Void> tagRequestQuote(
+    public ResponseEntity<RsData> requestTagToQuote(
             @PathVariable Long quoteId,
             @AuthenticationPrincipal SecurityUser securityUser
-    ) { Member requester = securityUser.getMember();
-        quoteService.tagRequestQuote(requester, quoteId);
-        return ResponseEntity.ok().build();
+    ) {
+        if (securityUser == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "401-1. 로그인 인증 정보가 유효하지 않습니다."
+            );
+        }
+        Member requester = securityUser.getMember();
+        quoteService.requestTagToQuote(quoteId, requester);
+        return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-3", "태그 요청이 명언 작성자에게 전송되었습니다."));
     }
-
 }

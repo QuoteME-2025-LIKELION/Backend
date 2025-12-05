@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import com.ll.demo.domain.quote.entity.QuoteTagRequest;
 import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
+import com.ll.demo.global.exceptions.GlobalException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -143,5 +144,23 @@ public class QuoteService {
         return quotes.stream()
                 .map(QuoteResponse::new)
                 .toList();
+    }
+
+    // 태그 요청
+    @Transactional
+    public void requestTagToQuote(Long quoteId, Member requester) {
+        Quote quote = quoteRepository.findById(quoteId)
+                .orElseThrow(() -> new GlobalException("404", "해당 명언을 찾을 수 없습니다."));
+        if (quote.getAuthor().getId().equals(requester.getId())) {
+            throw new GlobalException("400", "자신이 작성한 글에는 태그 요청을 할 수 없습니다.");
+        }
+        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
+            throw new GlobalException("409", "이미 해당 명언에 태그 요청을 하였습니다.");
+        }
+        QuoteTagRequest tagRequest = QuoteTagRequest.builder()
+                .quote(quote)
+                .requester(requester)
+                .build();
+        quoteTagRequestRepository.save(tagRequest);
     }
 }

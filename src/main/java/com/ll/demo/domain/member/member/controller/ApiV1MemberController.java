@@ -49,9 +49,6 @@ public class ApiV1MemberController {
         return joinRs.newDataOf(new MemberJoinRespBody(memberDto));
     }
 
-    // ==========================================
-    // ▼▼▼ [수정됨] 로그인 응답 DTO 추가 ▼▼▼
-    // ==========================================
     @Getter
     @AllArgsConstructor
     public static class LoginResponseBody {

@@ -1,7 +1,7 @@
 package com.ll.demo.domain.member.member.entity;
 
 import static lombok.AccessLevel.PROTECTED;
-
+import com.ll.demo.domain.member.member.type.Gender;
 import com.ll.demo.global.jpa.entity.BaseTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,6 +17,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 
 @Entity
 @Table(name = "members")
@@ -68,4 +70,8 @@ public class Member extends BaseTime {
         }
         return this.email.split("@")[0]; // 예: test@naver.com -> test
     }
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = true)
+    private Gender gender;
 }

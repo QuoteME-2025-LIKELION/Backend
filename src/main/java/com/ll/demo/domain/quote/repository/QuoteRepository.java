@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.ll.demo.domain.member.member.entity.Member;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Collection;
+
 public interface QuoteRepository extends JpaRepository<Quote, Long> {
     // 1. 나의 명언 조회 (최신순)
     List<Quote> findAllByAuthorIdOrderByCreateDateDesc(Long authorId);
@@ -22,4 +24,7 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
     long countByAuthor(Member author);
     @Query("select ql.quote from QuoteLike ql where ql.member.id = :memberId order by ql.id desc")
     List<Quote> findQuotesLikedByMember(@Param("memberId") Long memberId);
+
+    // 그룹원 리스트 > 명언 총 개수
+    long countByAuthorIn(Collection<Member> authors);
 }

@@ -4,6 +4,9 @@ import com.ll.demo.domain.quote.entity.Quote;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import com.ll.demo.domain.member.member.entity.Member;
+
+
 
 public interface QuoteRepository extends JpaRepository<Quote, Long> {
     // 1. 나의 명언 조회 (최신순)
@@ -14,4 +17,7 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
 
     // 1일 1명언 체크용
     boolean existsByAuthorIdAndCreateDateBetween(Long authorId, LocalDateTime start, LocalDateTime end);
+
+    // 명언 개수
+    long countByAuthor(Member author);
 }

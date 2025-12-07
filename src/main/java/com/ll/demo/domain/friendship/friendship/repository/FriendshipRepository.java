@@ -13,4 +13,6 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Long> {
     boolean existsByMemberAndFriend(Member member, Member friend);
     // 받은 친구 요청 목록 조회
     List<Friendship> findByFriendAndStatus(Member friend, FriendshipStatus status);
+    //친구 수
+    long countByMember(Member member);
 }

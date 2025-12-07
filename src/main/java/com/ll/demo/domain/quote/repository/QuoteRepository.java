@@ -1,12 +1,12 @@
 package com.ll.demo.domain.quote.repository;
 
 import com.ll.demo.domain.quote.entity.Quote;
+import io.lettuce.core.dynamic.annotation.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import com.ll.demo.domain.member.member.entity.Member;
-
-
+import org.springframework.data.jpa.repository.Query;
 
 public interface QuoteRepository extends JpaRepository<Quote, Long> {
     // 1. 나의 명언 조회 (최신순)
@@ -20,4 +20,6 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
 
     // 명언 개수
     long countByAuthor(Member author);
+    @Query("select ql.quote from QuoteLike ql where ql.member.id = :memberId order by ql.id desc")
+    List<Quote> findQuotesLikedByMember(@Param("memberId") Long memberId);
 }

@@ -1,28 +1,28 @@
 package com.ll.demo.domain.quote.service;
 
 import com.ll.demo.domain.member.member.entity.Member;
-import com.ll.demo.domain.member.member.repository.MemberRepository; // [추가] 필수!
+import com.ll.demo.domain.member.member.repository.MemberRepository;
+import com.ll.demo.domain.notification.service.NotificationService;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
+import com.ll.demo.domain.quote.entity.QuoteTag;
+import com.ll.demo.domain.quote.entity.QuoteTagRequest;
 import com.ll.demo.domain.quote.repository.QuoteLikeRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
+import com.ll.demo.domain.quote.repository.QuoteTagRepository;
 import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
+import com.ll.demo.global.exceptions.GlobalException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import com.ll.demo.domain.quote.entity.QuoteTagRequest;
-import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
-import com.ll.demo.global.exceptions.GlobalException;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
-import org.springframework.data.domain.Sort;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +33,8 @@ public class QuoteService {
     private final QuoteLikeRepository quoteLikeRepository;
     private final MemberRepository memberRepository; // ★ [수정] 이게 없어서 에러가 났었습니다!
     private final QuoteTagRequestRepository quoteTagRequestRepository;
+    private final QuoteTagRepository quoteTagRepository;
+    private final NotificationService notificationService;
 
     // 명언 작성 (저장)
     @Transactional
@@ -162,5 +164,54 @@ public class QuoteService {
                 .requester(requester)
                 .build();
         quoteTagRequestRepository.save(tagRequest);
+    }
+
+    // [추가] 좋아요한 글 목록 조회
+    public List<QuoteResponse> findLikedQuotes(Long memberId) {
+        // 1. DB에서 내가 좋아요한 Quote 목록 조회
+        List<Quote> likedQuotes = quoteRepository.findQuotesLikedByMember(memberId);
+
+        // 2. DTO로 변환
+        return likedQuotes.stream()
+                .map(QuoteResponse::new)
+                .toList();
+    }
+
+    // 태그 수정 기능
+    @Transactional
+    public void updateTags(Long authorId, Long quoteId, List<Long> taggedMemberIds) {
+        Quote quote = quoteRepository.findById(quoteId)
+                .orElseThrow(() -> new RuntimeException("명언을 찾을 수 없습니다."));
+
+        // 1. 작성자 본인 확인 (본인 글만 태그 수정 가능)
+        if (!quote.getAuthor().getId().equals(authorId)) {
+            throw new RuntimeException("수정 권한이 없습니다.");
+        }
+
+        // 2. 기존 태그 싹 지우기 (초기화)
+        quoteTagRepository.deleteAllByQuote(quote);
+
+        // 3. 새로운 태그 저장 및 알림 발송
+        if (taggedMemberIds != null && !taggedMemberIds.isEmpty()) {
+            for (Long memberId : taggedMemberIds) {
+                Member taggedMember = memberRepository.findById(memberId)
+                        .orElseThrow(() -> new RuntimeException("존재하지 않는 회원입니다."));
+
+                // 태그 저장
+                QuoteTag quoteTag = new QuoteTag(quote, taggedMember);
+                quoteTagRepository.save(quoteTag);
+
+                // ★ 알림 발송 (TAG 타입)
+                // 내용: "OO님이 회원님을 글에 태그했습니다."
+                // 클릭 시 이동(targetId): 해당 명언 ID (quote.getId())
+                notificationService.create(
+                        taggedMember,       // 받는 사람 (태그된 친구)
+                        quote.getAuthor(),  // 보낸 사람 (글쓴이)
+                        "TAG",
+                        quote.getAuthor().getName() + "님이 글에 태그했습니다.",
+                        quote.getId()
+                );
+            }
+        }
     }
 }

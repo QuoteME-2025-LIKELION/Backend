@@ -1,12 +1,12 @@
 package com.ll.demo.domain.profile.profile.service;
 
 import com.ll.demo.domain.member.member.entity.Member;
-import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
 import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
 import com.ll.demo.domain.profile.profile.dto.ProfileResponse;
 import com.ll.demo.domain.profile.profile.dto.ProfileUpdateRequest;
+import com.ll.demo.domain.profile.profile.dto.AccountUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,5 +44,30 @@ public class ProfileService {
         // memberRepository.save(persistentMember);
 
         return getMyProfile(persistentMember);
+    }
+
+    // 계정 정보 수정
+    public void updateAccountInfo(Member member, AccountUpdateRequest request) {
+        Member persistentMember = memberRepository.findById(member.getId())
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        // 이메일 중복 체크
+        if (!persistentMember.getEmail().equals(request.email())) {
+            memberRepository.findByEmail(request.email()).ifPresent(m -> {
+                throw new RuntimeException("이미 사용 중인 이메일입니다.");
+            });
+        }
+
+        persistentMember.setEmail(request.email());
+        persistentMember.setBirthYear(request.birthYear());
+        persistentMember.setGender(request.gender()); // 성별 업데이트
+    }
+
+    // 계정 삭제
+    public void deleteAccount(Member member) {
+        Member persistentMember = memberRepository.findById(member.getId())
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        memberRepository.delete(persistentMember);
     }
 }

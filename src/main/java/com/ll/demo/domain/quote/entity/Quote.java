@@ -4,15 +4,19 @@ import static lombok.AccessLevel.PROTECTED;
 
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.global.jpa.entity.BaseTime;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
 @Entity
@@ -34,11 +38,9 @@ public class Quote extends BaseTime {
     @Column(columnDefinition = "TEXT")
     private String originalContent; // 원본 일기 내용
 
-    // @AllArgsConstructor 사용으로 제거했습니다 - mj
-//    // 생성자에서 Member를 받아서 author 필드에 넣습니다.
-//    public Quote(Member author, String content, String originalContent) {
-//        this.author = author;
-//        this.content = content;
-//        this.originalContent = originalContent;
-//    }
+    // [추가] 조회할 때 태그된 정보를 쉽게 가져오기 위해 연결
+    @OneToMany(mappedBy = "quote", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default // Builder 패턴 쓸 때 초기화 방지
+    private List<QuoteTag> tags = new ArrayList<>();
+
 }

@@ -2,13 +2,14 @@ package com.ll.demo.domain.quote.dto;
 
 import com.ll.demo.domain.quote.entity.Quote;
 import java.time.LocalDateTime;
-import lombok.Builder;
+import java.util.List;
 
 public record QuoteResponse(
         Long id,
         String content,
         String originalContent,
         String authorName,
+        List<String> taggedMemberNames,
         LocalDateTime createDate
 ) {
     // Service에서 new QuoteResponse(quote)를 쓸 수 있게 해주는 생성자
@@ -18,6 +19,9 @@ public record QuoteResponse(
                 quote.getContent(),
                 quote.getOriginalContent(),
                 quote.getAuthor().getNickname(),
+                quote.getTags().stream()
+                                .map(tag -> tag.getMember().getName())
+                                .toList(),
                 quote.getCreateDate()
         );
     }

@@ -51,7 +51,8 @@ public class QuoteController {
         QuoteResponse response = quoteService.createQuote(
                 authorId,
                 request.content(),        // 명언 (또는 짧은 글)
-                request.originalContent() // 원본 일기 (없으면 null 들어옴)
+                request.originalContent(), // 원본 일기 (없으면 null 들어옴)
+                request.taggedMemberIds()
         );
 
         // 3. 결과 반환

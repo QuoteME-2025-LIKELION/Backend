@@ -38,7 +38,7 @@ public class QuoteService {
 
     // 명언 작성 (저장)
     @Transactional
-    public QuoteResponse createQuote(Long authorId, String content, String originalContent) {
+    public QuoteResponse createQuote(Long authorId, String content, String originalContent, List<Long> taggedMemberIds) {
         // 1. 1일 1명언 제한 체크
         validateOneQuotePerDay(authorId);
 
@@ -55,6 +55,26 @@ public class QuoteService {
                 .build();
 
         quoteRepository.save(quote);
+
+        if (taggedMemberIds != null && !taggedMemberIds.isEmpty()) {
+            for (Long memberId : taggedMemberIds) {
+                Member taggedMember = memberRepository.findById(memberId)
+                        .orElseThrow(() -> new RuntimeException("태그된 회원을 찾을 수 없습니다."));
+
+                // 태그 저장
+                QuoteTag quoteTag = new QuoteTag(quote, taggedMember);
+                quoteTagRepository.save(quoteTag);
+
+                // 알림 발송 (TAG 타입)
+                notificationService.create(
+                        taggedMember,
+                        author,
+                        "TAG",
+                        author.getName() + "님이 글에 태그했습니다.",
+                        quote.getId()
+                );
+            }
+        }
 
         return new QuoteResponse(quote);
     }

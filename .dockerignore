@@ -1,0 +1,24 @@
+
+.DS_Store
+node_modules
+
+# 데이터베이스 볼륨 폴더 (가장 중요!)
+_vol
+_vol/**
+
+# Git 관련 파일
+.git
+.gitignore
+
+# 빌드 결과물 (이미지 안에서 다시 빌드할거라면 필요 없음)
+build
+out
+.gradle
+
+# IDE 설정 파일
+.idea
+*.iml
+
+# 기타
+docker-compose.yml
+docker-compose.dev.yml

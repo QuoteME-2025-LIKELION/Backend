@@ -4,10 +4,12 @@ import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
+import com.ll.demo.domain.quote.dto.QuoteTagRequestResponse;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
 import com.ll.demo.domain.quote.entity.QuoteTag;
 import com.ll.demo.domain.quote.entity.QuoteTagRequest;
+import com.ll.demo.domain.quote.entity.TagRequestStatus;
 import com.ll.demo.domain.quote.repository.QuoteLikeRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
 import com.ll.demo.domain.quote.repository.QuoteTagRepository;
@@ -35,6 +37,7 @@ public class QuoteService {
     private final QuoteTagRequestRepository quoteTagRequestRepository;
     private final QuoteTagRepository quoteTagRepository;
     private final NotificationService notificationService;
+
 
     // 명언 작성 (저장)
     @Transactional
@@ -122,29 +125,6 @@ public class QuoteService {
                 .toList();
     }
 
-    // 명언에 태그 요청하는 메서드 - mj
-    @Transactional
-    public void tagRequestQuote(Member requester, Long quoteId) {
-        Quote quote = quoteRepository.findById(quoteId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "명언을 찾을 수 없습니다."));
-
-        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 해당 글에 태그 요청을 하셨습니다.");
-        }
-
-        // 자기 글에 요청하는지 체크
-        // 지금은 임시로 ID로 비교한다 가정
-        if (requester.getId().equals(quote.getAuthor().getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인 글에는 태그 요청을 할 수 없습니다.");
-        }
-
-        QuoteTagRequest tagRequest = QuoteTagRequest.builder()
-                .quote(quote)
-                .requester(requester)
-                .build();
-
-        quoteTagRequestRepository.save(tagRequest);
-    }
 
     // 1. 나의 명언 목록 가져오기
     public List<QuoteResponse> findMyQuotes(Long authorId) {
@@ -168,23 +148,6 @@ public class QuoteService {
                 .toList();
     }
 
-    // 태그 요청
-    @Transactional
-    public void requestTagToQuote(Long quoteId, Member requester) {
-        Quote quote = quoteRepository.findById(quoteId)
-                .orElseThrow(() -> new GlobalException("404", "해당 명언을 찾을 수 없습니다."));
-        if (quote.getAuthor().getId().equals(requester.getId())) {
-            throw new GlobalException("400", "자신이 작성한 글에는 태그 요청을 할 수 없습니다.");
-        }
-        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
-            throw new GlobalException("409", "이미 해당 명언에 태그 요청을 하였습니다.");
-        }
-        QuoteTagRequest tagRequest = QuoteTagRequest.builder()
-                .quote(quote)
-                .requester(requester)
-                .build();
-        quoteTagRequestRepository.save(tagRequest);
-    }
 
     // [추가] 좋아요한 글 목록 조회
     public List<QuoteResponse> findLikedQuotes(Long memberId) {
@@ -234,4 +197,115 @@ public class QuoteService {
             }
         }
     }
+    // [통합 & 수정] 태그 요청 기능 (알림 기능 추가됨)
+    @Transactional
+    public void requestTag(Long requesterId, Long quoteId) {
+        Quote quote = quoteRepository.findById(quoteId)
+                .orElseThrow(() -> new RuntimeException("명언을 찾을 수 없습니다."));
+
+        Member requester = memberRepository.findById(requesterId)
+                .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
+
+        // 1. 검증: 본인 글에는 요청 불가
+        if (quote.getAuthor().getId().equals(requesterId)) {
+            throw new RuntimeException("본인 글에는 태그 요청을 할 수 없습니다.");
+        }
+
+        // 2. 검증: 이미 요청했는지 확인
+        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
+            throw new RuntimeException("이미 태그 요청을 보냈습니다.");
+        }
+
+        // 3. 요청 저장
+        QuoteTagRequest request = QuoteTagRequest.builder()
+                .quote(quote)
+                .requester(requester)
+                .status(TagRequestStatus.PENDING) // Enum에 PENDING이 있어야 합니다.
+                .build();
+
+        quoteTagRequestRepository.save(request);
+
+        // 4. ★ 알림 발송 (작성자에게)
+        // Type: "TAG_REQUEST"
+        // TargetId: 해당 명언 ID
+        notificationService.create(
+                quote.getAuthor(),  // 받는 사람: 글 작성자
+                requester,          // 보낸 사람: 요청자 (조른 사람)
+                "TAG_REQUEST",      // 알림 타입
+                requester.getName() + "님이 태그를 요청했습니다.",
+                quote.getId()       // 클릭 시 이동할 곳
+        );
+    }
+    // 태그 요청 수락
+    @Transactional
+    public void acceptTagRequest(Long authorId, Long requestId) {
+        // 1. 요청 데이터 조회
+        QuoteTagRequest request = quoteTagRequestRepository.findById(requestId)
+                .orElseThrow(() -> new GlobalException("404", "존재하지 않는 요청입니다."));
+
+        // 2. 권한 검증 (글 작성자 본인만 수락 가능)
+        if (!request.getQuote().getAuthor().getId().equals(authorId)) {
+            throw new GlobalException("403", "이 요청을 처리할 권한이 없습니다.");
+        }
+
+        // 3. 상태 검증 (이미 처리된 요청인지 확인)
+        if (request.getStatus() != TagRequestStatus.PENDING) {
+            throw new GlobalException("400", "이미 처리된(수락/거절) 요청입니다.");
+        }
+
+        // 4. 상태 변경 (PENDING -> ACCEPTED)
+        request.accept(); // 엔티티 편의 메서드 사용
+
+        // 5. ★ [핵심] 실제 태그(QuoteTag) 생성 및 저장
+        // 요청만 수락하고 태그를 안 만들면 의미가 없죠! 여기서 진짜 태그를 붙여줍니다.
+        QuoteTag quoteTag = new QuoteTag(request.getQuote(), request.getRequester());
+        quoteTagRepository.save(quoteTag);
+
+        // 6. 알림 발송 (요청자에게 "수락되었습니다" 알림)
+        notificationService.create(
+                request.getRequester(),         // 받는 사람: 요청했던 친구
+                request.getQuote().getAuthor(), // 보낸 사람: 작가(나)
+                "TAG_ACCEPTED",                 // 알림 타입 (새로 정의 필요)
+                request.getQuote().getAuthor().getName() + "님이 태그 요청을 수락했습니다!",
+                request.getQuote().getId()      // 클릭 시 이동할 글 ID
+        );
+    }
+
+    // 태그 요청 거절
+    @Transactional
+    public void rejectTagRequest(Long authorId, Long requestId) {
+        QuoteTagRequest request = quoteTagRequestRepository.findById(requestId)
+                .orElseThrow(() -> new GlobalException("404", "존재하지 않는 요청입니다."));
+
+        if (!request.getQuote().getAuthor().getId().equals(authorId)) {
+            throw new GlobalException("403", "이 요청을 처리할 권한이 없습니다.");
+        }
+
+        if (request.getStatus() != TagRequestStatus.PENDING) {
+            throw new GlobalException("400", "이미 처리된 요청입니다.");
+        }
+
+        // 4. 상태 변경 (PENDING -> REJECTED)
+        request.reject();
+
+    }
+
+    // [추가] 태그 요청 목록 조회
+    public List<QuoteTagRequestResponse> getPendingTagRequests(Long authorId, Long quoteId) {
+        Quote quote = quoteRepository.findById(quoteId)
+                .orElseThrow(() -> new GlobalException("404", "명언을 찾을 수 없습니다."));
+
+        // 작성자 본인만 요청 목록을 볼 수 있음 (보안)
+        if (!quote.getAuthor().getId().equals(authorId)) {
+            throw new GlobalException("403", "권한이 없습니다.");
+        }
+
+        // PENDING(대기) 상태인 요청만 가져오기
+        List<QuoteTagRequest> requests = quoteTagRequestRepository.findAllByQuoteIdAndStatus(quoteId, TagRequestStatus.PENDING);
+
+        return requests.stream()
+                .map(QuoteTagRequestResponse::from)
+                .toList();
+    }
 }
+

@@ -9,6 +9,7 @@ public record QuoteResponse(
         String content,
         String originalContent,
         String authorName,
+        Integer authorBirthYear,
         List<String> taggedMemberNames,
         LocalDateTime createDate
 ) {
@@ -19,6 +20,7 @@ public record QuoteResponse(
                 quote.getContent(),
                 quote.getOriginalContent(),
                 quote.getAuthor().getNickname(),
+                Integer.valueOf(quote.getAuthor().getBirthYear()),
                 quote.getTags().stream()
                                 .map(tag -> tag.getMember().getName())
                                 .toList(),

@@ -1,31 +1,41 @@
 package com.ll.demo.domain.quote.entity;
 
+import static lombok.AccessLevel.PROTECTED;
+
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.global.jpa.entity.BaseTime;
-import jakarta.persistence.*;
-import lombok.*;
-import static lombok.AccessLevel.PROTECTED;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ManyToOne;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
 @Builder
+@AllArgsConstructor
 @NoArgsConstructor(access = PROTECTED)
-@AllArgsConstructor(access = PROTECTED)
 public class QuoteTagRequest extends BaseTime {
 
-    // 요청한 명언
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quote_id", nullable = false)
-    private Quote quote;
 
-    // 요청한 사람
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "requester_id", nullable = false)
-    private Member requester;
+    private Quote quote; // 요청 대상 글
 
-    // 요청 상태
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Member requester; // 태그를 요청한 사람 (조른 사람)
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    @Builder.Default
-    private TagRequestStatus status = TagRequestStatus.PENDING;
+    private TagRequestStatus status; // PENDING(대기), ACCEPTED(수락), REJECTED(거절)
+
+    public void accept() {
+        this.status = TagRequestStatus.ACCEPTED;
+    }
+
+    public void reject() {
+        this.status = TagRequestStatus.REJECTED;
+    }
 }

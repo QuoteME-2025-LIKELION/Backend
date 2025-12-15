@@ -53,6 +53,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
     implementation 'javax.persistence:javax.persistence-api:2.2'
     implementation 'com.google.genai:google-genai:0.4.0'
+    implementation 'org.springframework.security:spring-security-core'
 }
 //
 //tasks.named('test') {

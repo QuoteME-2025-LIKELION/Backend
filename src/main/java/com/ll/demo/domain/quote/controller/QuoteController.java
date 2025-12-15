@@ -6,6 +6,7 @@ import com.ll.demo.domain.quote.dto.QuoteCreateRequest;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.dto.QuoteTagUpdateReq;
 import com.ll.demo.domain.quote.service.QuoteService;
+import com.ll.demo.domain.quote.dto.QuoteListDto;
 import com.ll.demo.global.gemini.GeminiService;
 import com.ll.demo.global.rsData.RsData;
 import com.ll.demo.global.security.SecurityUser;
@@ -24,7 +25,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/quotes")
@@ -85,9 +89,18 @@ public class QuoteController {
 
     // 글 목록 조회 - mj
     @GetMapping
-    public ResponseEntity<List<QuoteResponse>> getQuotes() {
-        List<QuoteResponse> response = quoteService.getQuoteList();
-        return ResponseEntity.ok(response);
+    public ResponseEntity<QuoteListDto> getQuoteList(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @RequestParam(value = "date", required = true) // 'date' 쿼리 파라미터를 필수로 받음
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        if (securityUser == null) {
+            // 💡 비로그인 상태일 경우 예외 처리
+            throw new RuntimeException("로그인이 필요합니다.");
+        }
+
+        // 서비스 계층으로 사용자 정보와 날짜를 넘겨 필터링 및 상세 정보 조회를 요청
+        return ResponseEntity.ok(quoteService.getQuoteList(securityUser.getMember(), date));
     }
 
     // 태그 요청

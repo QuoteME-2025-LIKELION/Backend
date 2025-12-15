@@ -1,14 +1,18 @@
 package com.ll.demo.domain.quote.repository;
 
 import com.ll.demo.domain.quote.entity.Quote;
-import io.lettuce.core.dynamic.annotation.Param;
+// import io.lettuce.core.dynamic.annotation.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import com.ll.demo.domain.member.member.entity.Member;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.time.LocalDateTime;
+import java.util.List;
 
 public interface QuoteRepository extends JpaRepository<Quote, Long> {
     // 1. 나의 명언 조회 (최신순)
@@ -27,4 +31,15 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
 
     // 그룹원 리스트 > 명언 총 개수
     long countByAuthorIn(Collection<Member> authors);
+
+    // 로그인한 사용자가 작성한 거 제외하고 모든 명언 조회
+    @Query("SELECT q FROM Quote q WHERE q.author.id <> :userId OR :userId IS NULL")
+    List<Quote> findAllExcludingUser(@Param("userId") Long userId, Sort sort);
+
+    // 🟢 날짜 범위 필터링 (시작 시간 <= createAt < 다음 날 시작 시간)
+    @Query("SELECT q FROM Quote q WHERE q.createDate >= :startDate AND q.createDate < :endDate ORDER BY q.createDate DESC")
+    List<Quote> findAllByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // 🟢 내가 작성한 글 모두 조회: Quote 엔티티의 필드명 'author'를 사용하여 정의
+    List<Quote> findAllByAuthorId(Long authorId);
 }

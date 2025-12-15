@@ -67,3 +67,5 @@ replay_pid*
 
 # yml 파일들이 업로드x
 *.yml
+
+_vol/

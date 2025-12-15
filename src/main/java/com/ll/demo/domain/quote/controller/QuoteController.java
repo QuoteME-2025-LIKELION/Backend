@@ -1,9 +1,9 @@
 package com.ll.demo.domain.quote.controller;
 
-import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.quote.dto.AiSummaryReq;
 import com.ll.demo.domain.quote.dto.QuoteCreateRequest;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
+import com.ll.demo.domain.quote.dto.QuoteTagRequestResponse;
 import com.ll.demo.domain.quote.dto.QuoteTagUpdateReq;
 import com.ll.demo.domain.quote.service.QuoteService;
 import com.ll.demo.domain.quote.dto.QuoteListDto;
@@ -44,11 +44,14 @@ public class QuoteController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         Long authorId = user.getMember().getId();
+
         QuoteResponse response = quoteService.createQuote(
                 authorId,
                 request.content(),
-                request.originalContent()
+                request.originalContent(),
+                request.taggedMemberIds()
         );
+
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -57,6 +60,7 @@ public class QuoteController {
         String summary = geminiService.summarize(req.content());
         return ResponseEntity.ok(Map.of("summary", summary));
     }
+
     // 좋아요 등록 (POST)
     @PostMapping("/{quoteId}/like")
     public ResponseEntity<Void> likeQuote(
@@ -116,5 +120,41 @@ public class QuoteController {
     ) {
         quoteService.updateTags(user.getMember().getId(), quoteId, req.taggedMemberIds());
         return ResponseEntity.ok().build();
+    }
+
+    // 태그 요청 수락
+    @PostMapping("/requests/{requestId}/accept")
+    public ResponseEntity<RsData> acceptTagRequest(
+            @PathVariable Long requestId,
+            @AuthenticationPrincipal SecurityUser user
+    ) {
+        quoteService.acceptTagRequest(user.getMember().getId(), requestId);
+
+        return ResponseEntity.ok(
+                RsData.of("200", "태그 요청을 수락했습니다.")
+        );
+    }
+
+    // 태그 요청 거절
+    @PostMapping("/requests/{requestId}/reject")
+    public ResponseEntity<RsData> rejectTagRequest(
+            @PathVariable Long requestId,
+            @AuthenticationPrincipal SecurityUser user
+    ) {
+        quoteService.rejectTagRequest(user.getMember().getId(), requestId);
+
+        return ResponseEntity.ok(
+                RsData.of("200", "태그 요청을 거절했습니다.")
+        );
+    }
+
+    // 태그 요청 목록 조회
+    @GetMapping("/{quoteId}/requests")
+    public ResponseEntity<List<QuoteTagRequestResponse>> getTagRequests(
+            @PathVariable Long quoteId,
+            @AuthenticationPrincipal SecurityUser user
+    ) {
+        List<QuoteTagRequestResponse> response = quoteService.getPendingTagRequests(user.getMember().getId(), quoteId);
+        return ResponseEntity.ok(response);
     }
 }

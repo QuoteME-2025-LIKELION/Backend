@@ -1,0 +1,78 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ "main" ] # main 브랜치에 push하면 실행
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Actions에서 레포 코드 받기
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Docker Buildx 준비 (멀티아키 빌드)
+      - name: Set up QEMU (multi-arch emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Docker Hub 로그인
+      - name: Docker Hub login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 이미지 태그 변수 정하기
+      - name: Prepare image tags
+        id: prep
+        run: |
+          IMAGE_NS="${{ secrets.DOCKERHUB_USERNAME }}"
+          IMAGE_NAME="quoteme"
+          IMAGE="${IMAGE_NS}/${IMAGE_NAME}"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+          echo "tag_latest=${IMAGE}:latest" >> $GITHUB_OUTPUT
+          echo "tag_sha=${IMAGE}:${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      # 멀티아키로 빌드 + 푸시(동시에)
+      - name: Build and Push (multi-arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.prep.outputs.tag_latest }}
+            ${{ steps.prep.outputs.tag_sha }}
+          cache-from: type=registry,ref=${{ steps.prep.outputs.tag_latest }}
+          cache-to: type=inline
+
+      # EC2에 접속해서 배포
+      # ssh로 접속 → 배포 폴더로 이동 → docker compose pull && up -d
+      - name: Deploy on EC2 (pull & up -d)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd /srv/quoteme/deploy
+            echo "[1/3] pull"
+            docker compose -f docker-compose.prod.yml pull
+            echo "[2/3] up -d"
+            docker compose -f docker-compose.prod.yml up -d
+            echo "[3/3] prune"
+            docker image prune -f
+            echo "Deploy done."

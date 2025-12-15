@@ -55,6 +55,7 @@ dependencies {
     implementation 'com.google.genai:google-genai:0.4.0'
 
     runtimeOnly 'com.mysql:mysql-connector-j'
+    implementation 'org.springframework.security:spring-security-core'
 }
 //
 //tasks.named('test') {

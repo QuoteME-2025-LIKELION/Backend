@@ -129,9 +129,8 @@ public class QuoteService {
                     boolean isLiked = quoteLikeRepository.existsByQuoteAndMember(q, currentUser);
                     boolean isFriend = friendshipRepository.existsByMemberAndFriend(currentUser, q.getAuthor());
                     List<String> taggedNicknames = quoteTagRepository.findAllByQuote(q).stream()
-                            .map(qt -> qt.getMember().getNickname()) // 🟢 QuoteTag의 getMember() 호출
-                            // 🟢 ERROR: List<Object> -> List<String> 해결. .toList()는 Java 16 이상에서 타입 추론 가능
-                            .collect(Collectors.toList()); // 🟢 명시적 collect로 타입 오류 회피
+                            .map(qt -> qt.getMember().getNickname())
+                            .collect(Collectors.toList());
                     return QuoteDetailResponse.from(q, taggedNicknames, isLiked, isFriend);
                 })
                 .toList();
@@ -172,8 +171,6 @@ public class QuoteService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 해당 글에 태그 요청을 하셨습니다.");
         }
 
-        // 자기 글에 요청하는지 체크
-        // 지금은 임시로 ID로 비교한다 가정
         if (requester.getId().equals(quote.getAuthor().getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인 글에는 태그 요청을 할 수 없습니다.");
         }
@@ -186,28 +183,24 @@ public class QuoteService {
         quoteTagRequestRepository.save(tagRequest);
     }
 
-    // 🟢 1. 내가 작성한 명언 목록 조회 (ArchiveController에서 호출)
     public List<QuoteResponse> findMyQuotes(Long memberId) {
-        // [로직] memberId를 기준으로 작성된 모든 명언을 조회합니다.
         List<Quote> myQuotes = quoteRepository.findAllByAuthorId(memberId);
 
         return myQuotes.stream()
-                .map(QuoteResponse::from) // QuoteResponse.from(Quote) 메서드가 있다고 가정
+                .map(QuoteResponse::from)
                 .collect(Collectors.toList());
     }
 
-    // 🟢 2. 내가 좋아요 누른 명언 목록 조회 (ArchiveController에서 호출)
+    // 내가 좋아요 누른 명언 조회
     public List<QuoteResponse> findLikedQuotes(Long memberId) {
-        // [로직] QuoteLike 엔티티를 조인하거나, 별도의 쿼리를 통해 memberId가 좋아요를 누른 명언만 조회합니다.
-        // QuoteRepository에 @Query를 사용한 메서드가 필요합니다. (아래 1단계 참고)
         List<Quote> likedQuotes = quoteRepository.findQuotesLikedByMember(memberId);
 
         return likedQuotes.stream()
-                .map(QuoteResponse::from) // QuoteResponse.from(Quote) 메서드가 있다고 가정
+                .map(QuoteResponse::from)
                 .collect(Collectors.toList());
     }
 
-    // 2. 특정 날짜의 전체 명언 가져오기
+    // 특정 날짜의 전체 명언
     public List<QuoteResponse> findQuotesByDate(LocalDate date) {
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
@@ -237,12 +230,9 @@ public class QuoteService {
         quoteTagRequestRepository.save(tagRequest);
     }
 
-//    // [추가] 좋아요한 글 목록 조회
+//    // 좋아요한 글 목록 조회 - 이전 버전
 //    public List<QuoteResponse> findLikedQuotes(Long memberId) {
-//        // 1. DB에서 내가 좋아요한 Quote 목록 조회
 //        List<Quote> likedQuotes = quoteRepository.findQuotesLikedByMember(memberId);
-//
-//        // 2. DTO로 변환
 //        return likedQuotes.stream()
 //                .map(QuoteResponse::new)
 //                .toList();
@@ -254,15 +244,15 @@ public class QuoteService {
         Quote quote = quoteRepository.findById(quoteId)
                 .orElseThrow(() -> new RuntimeException("명언을 찾을 수 없습니다."));
 
-        // 1. 작성자 본인 확인 (본인 글만 태그 수정 가능)
+        // 작성자 본인 확인
         if (!quote.getAuthor().getId().equals(authorId)) {
             throw new RuntimeException("수정 권한이 없습니다.");
         }
 
-        // 2. 기존 태그 싹 지우기 (초기화)
+        // 기존 태그 초기화
         quoteTagRepository.deleteAllByQuote(quote);
 
-        // 3. 새로운 태그 저장 및 알림 발송
+        // 새로운 태그 저장 및 알림 발송
         if (taggedMemberIds != null && !taggedMemberIds.isEmpty()) {
             for (Long memberId : taggedMemberIds) {
                 Member taggedMember = memberRepository.findById(memberId)

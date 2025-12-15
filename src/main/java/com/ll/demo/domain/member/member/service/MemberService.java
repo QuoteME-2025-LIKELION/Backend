@@ -2,6 +2,7 @@ package com.ll.demo.domain.member.member.service;
 
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
+import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.rsData.RsData;
 import java.util.Optional;
@@ -14,10 +15,18 @@ import com.ll.demo.domain.member.member.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.member.member.dto.MemberSearchResponse;
 import com.ll.demo.domain.member.member.dto.FriendResponse;
 import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
+import com.ll.demo.domain.friendship.friendship.entity.Friendship;
+import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
+import com.ll.demo.domain.group.group.repository.GroupRepository;
+import com.ll.demo.domain.group.group.entity.Group;
+import com.ll.demo.domain.group.group.dto.GroupSearchResponse;
+import com.ll.demo.domain.member.member.dto.SearchCombinedResponse;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Collections;
-import com.ll.demo.domain.friendship.friendship.entity.Friendship;
+import java.util.HashSet;
+import java.util.Set;
+
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +36,8 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final FriendshipRepository friendshipRepository;
+    private final GroupMemberRepository groupMemberRepository;
+    private final GroupRepository groupRepository;
 
     // 이메일로 회원 조회
     @Transactional(readOnly = true)
@@ -102,21 +113,55 @@ public class MemberService {
         member.setIntroduction(request.getIntroduction());
         member.setProfileImage(newProfileImageUrl);
     }
-    // 닉네임 or 이메일로 회원 검색
-    // 친구 목록 조회 + 친구 검색
-    public List<MemberSearchResponse> searchMembers(String keyword, Long currentMemberId) {
 
-        List<Member> members = memberRepository
+//    // 닉네임, 이메일, 그룹명으로 회원 검색
+//    public List<MemberSearchResponse> searchMembers(String keyword, Long currentMemberId) {
+//        List<Member> membersByNicknameOrEmail = memberRepository
+//                .searchMembersByNicknameOrEmailUsername(keyword);
+//        List<Member> membersByGroupName = groupMemberRepository
+//                .findMembersByGroupNameContaining(keyword);
+//        Set<Member> combinedMembers = new HashSet<>(membersByNicknameOrEmail);
+//        combinedMembers.addAll(membersByGroupName);
+//
+//        List<Member> filteredMembers = combinedMembers.stream()
+//                .filter(m -> !m.getId().equals(currentMemberId))
+//                .toList();
+//
+//        return filteredMembers.stream()
+//                .map(MemberSearchResponse::of)
+//                .toList();
+//    }
+
+    // 회원 및 그룹 검색
+    public SearchCombinedResponse searchCombined(String keyword, Long currentMemberId) {
+        // 닉네임or이메일로 검색
+        List<Member> membersByNicknameOrEmail = memberRepository
                 .searchMembersByNicknameOrEmailUsername(keyword);
 
-        List<Member> filteredMembers = members.stream()
-                .filter(m -> !m.getId().equals(currentMemberId))
-                .toList();
+        // 그룹명으로 그룹 멤버 검색
+        List<Member> membersByGroupName = groupMemberRepository
+                .findMembersByGroupNameContaining(keyword);
 
-        return filteredMembers.stream()
+        Set<Member> combinedMembers = new HashSet<>(membersByNicknameOrEmail);
+        combinedMembers.addAll(membersByGroupName);
+
+        List<MemberSearchResponse> memberResponses = combinedMembers.stream()
+                .filter(m -> !m.getId().equals(currentMemberId))
                 .map(MemberSearchResponse::of)
                 .toList();
+        // 그룹 자체
+        List<Group> groups = groupRepository.findByNameContainingIgnoreCase(keyword);
+
+        List<GroupSearchResponse> groupResponses = groups.stream()
+                .map(GroupSearchResponse::of)
+                .toList();
+
+        return SearchCombinedResponse.builder()
+                .members(memberResponses)
+                .groups(groupResponses)
+                .build();
     }
+
 
     // 친구 목록 조회
     public List<FriendResponse> getFriendList(Long memberId) {

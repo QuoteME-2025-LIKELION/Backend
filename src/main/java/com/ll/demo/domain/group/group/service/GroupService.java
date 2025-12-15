@@ -14,6 +14,7 @@ import com.ll.demo.domain.group.group.entity.GroupJoinRequest;
 import com.ll.demo.domain.group.group.dto.GroupDetailResponse;
 import com.ll.demo.domain.group.group.repository.GroupJoinRequestRepository;
 import com.ll.demo.domain.group.group.dto.MottoRequest;
+import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,18 +39,25 @@ public class GroupService {
         groupMemberRepository.save(GroupMember.builder().group(group).member(leader).build());
     }
 
-    public void inviteFriend(Member leader, Long groupId, Long friendId) {
-        Group group = groupRepository.findById(groupId).orElseThrow();
-        if (!group.getLeader().getId().equals(leader.getId())) throw new RuntimeException("리더만 초대 가능합니다.");
+    // 그룹 초대
+    // 누구나 초대 가능하도록 수정
+    public void inviteFriend(Member requester, Long groupId, Long friendId) { // 🟢 매개변수: friendId (Long)
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("그룹을 찾을 수 없습니다."));
+
+        boolean isMember = groupMemberRepository.existsByGroupAndMember(group, requester);
+        if (!isMember) throw new RuntimeException("그룹 멤버만 친구를 초대할 수 있습니다.");
         if (groupMemberRepository.countByGroup(group) >= 5) throw new RuntimeException("최대 인원(5명)을 초과했습니다.");
+        Member friend = memberRepository.findById(friendId)
+                .orElseThrow(() -> new RuntimeException("초대할 회원을 찾을 수 없습니다."));
+        if (!friendshipRepository.existsByMemberAndFriend(requester, friend)) throw new RuntimeException("친구 관계인 회원만 초대 가능합니다.");
+        if (groupMemberRepository.existsByGroupAndMember(group, friend)) throw new RuntimeException("이미 그룹에 포함된 회원입니다.");
 
-        Member friend = memberRepository.findById(friendId).orElseThrow();
-        // 친구 목록 중에서만 선택 가능!
-        if (!friendshipRepository.existsByMemberAndFriend(leader, friend)) {
-            throw new RuntimeException("친구인 사용자만 초대할 수 있습니다.");
-        }
-
-        groupMemberRepository.save(GroupMember.builder().group(group).member(friend).build());
+        GroupMember newMember = GroupMember.builder()
+                .group(group)
+                .member(friend)
+                .build();
+        groupMemberRepository.save(newMember);
     }
 
     @Transactional(readOnly = true)

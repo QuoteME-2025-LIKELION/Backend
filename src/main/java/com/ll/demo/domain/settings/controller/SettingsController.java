@@ -8,16 +8,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import com.ll.demo.domain.member.member.dto.FriendResponse;
 import com.ll.demo.domain.member.member.entity.Member;
+import com.ll.demo.domain.member.member.dto.SearchCombinedResponse; // 응답 dto 교체
 import java.util.List;
 import org.springframework.web.bind.annotation.RequestParam;
-import com.ll.demo.domain.member.member.dto.MemberSearchResponse;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
-
-
 @RestController
 @RequestMapping("/api/settings")
 @RequiredArgsConstructor
@@ -48,15 +45,14 @@ public class SettingsController {
         return ResponseEntity.ok().build();
     }
 
-    // 친구 검색 - !재검토 필요! 그룹명으로도 검색 가능하도록 service 수정
+    // 친구 및 그룹 통합검색
     @GetMapping("/search")
-    public ResponseEntity<List<MemberSearchResponse>> searchMembers(
+    public ResponseEntity<SearchCombinedResponse> searchMembers(
             @RequestParam(name = "keyword") String keyword,
             @AuthenticationPrincipal SecurityUser securityUser
     ) {
         Long memberId = securityUser.getMember().getId();
-        List<MemberSearchResponse> response = memberService.searchMembers(keyword, memberId);
-
+        SearchCombinedResponse response = memberService.searchCombined(keyword, memberId);
         return ResponseEntity.ok(response);
     }
 

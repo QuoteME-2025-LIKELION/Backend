@@ -15,10 +15,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface QuoteRepository extends JpaRepository<Quote, Long> {
-    // 1. 나의 명언 조회 (최신순)
+    // 나의 명언 조회
     List<Quote> findAllByAuthorIdOrderByCreateDateDesc(Long authorId);
 
-    // 2. 특정 날짜의 전체 명언 조회 (오늘 0시 ~ 오늘 23시 59분 사이)
+    // 특정 날짜의 전체 명언 조회
     List<Quote> findAllByCreateDateBetweenOrderByCreateDateDesc(LocalDateTime start, LocalDateTime end);
 
     // 1일 1명언 체크용
@@ -36,10 +36,10 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
     @Query("SELECT q FROM Quote q WHERE q.author.id <> :userId OR :userId IS NULL")
     List<Quote> findAllExcludingUser(@Param("userId") Long userId, Sort sort);
 
-    // 🟢 날짜 범위 필터링 (시작 시간 <= createAt < 다음 날 시작 시간)
+    // 날짜 범위 필터링
     @Query("SELECT q FROM Quote q WHERE q.createDate >= :startDate AND q.createDate < :endDate ORDER BY q.createDate DESC")
     List<Quote> findAllByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // 🟢 내가 작성한 글 모두 조회: Quote 엔티티의 필드명 'author'를 사용하여 정의
+    // 내가 작성한 글 모두 조회
     List<Quote> findAllByAuthorId(Long authorId);
 }

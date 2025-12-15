@@ -11,6 +11,7 @@ RUN ./gradlew dependencies --no-daemon || true
 
 # 소스 전체 복사 후 빌드
 COPY . .
+RUN chmod +x ./gradlew
 RUN ./gradlew clean bootJar --no-daemon
 
 # ===== 2) RUNTIME STAGE =====

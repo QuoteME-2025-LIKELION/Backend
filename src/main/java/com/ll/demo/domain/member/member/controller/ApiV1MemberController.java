@@ -11,6 +11,8 @@ import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.rsData.RsData;
 import com.ll.demo.global.security.AuthTokenService;
 import com.ll.demo.standard.rq.Rq;
+import com.ll.demo.global.security.SecurityUser;
+import com.ll.demo.domain.member.member.dto.SearchCombinedResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -22,7 +24,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -96,5 +100,21 @@ public class ApiV1MemberController {
         response.addCookie(passwordCookie);
 
         return RsData.of("200-2", "로그아웃 성공");
+    }
+
+    //회원 및 그룹 통합 검색
+    @GetMapping("/search")
+    public ResponseEntity<SearchCombinedResponse> searchMembers(
+            @RequestParam(value = "keyword", required = true) String keyword,
+            @AuthenticationPrincipal SecurityUser securityUser
+    ) {
+        if (securityUser == null) {
+            throw new GlobalException("401", "로그인이 필요합니다.");
+        }
+
+        Long currentMemberId = securityUser.getMember().getId();
+
+        SearchCombinedResponse response = memberService.searchCombined(keyword, currentMemberId);
+        return ResponseEntity.ok(response);
     }
 }

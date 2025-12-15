@@ -21,26 +21,25 @@ public class ArchiveController {
 
     private final QuoteService quoteService;
 
+    // 날짜별 명언 조회
     @GetMapping
     public ResponseEntity<List<QuoteResponse>> getQuotesByDate(
             @RequestParam("date") @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date
     ) {
-        // Service가 DTO를 주니까 바로 리턴하면 됨!
         List<QuoteResponse> result = quoteService.findQuotesByDate(date);
         return ResponseEntity.ok(result);
     }
 
+    // 내가 작성한 명언 목록
     @GetMapping("/me")
     public ResponseEntity<List<QuoteResponse>> getMyQuotes(
             @AuthenticationPrincipal SecurityUser user
     ) {
-        // 여기도 바로 리턴!
         List<QuoteResponse> result = quoteService.findMyQuotes(user.getMember().getId());
         return ResponseEntity.ok(result);
     }
 
-    // 3. 좋아요한 글 (내가 하트 누른 글 목록)
-    // GET /api/archives/likes
+    // 내가 좋아요한 명언 목록 조회
     @GetMapping("/likes")
     public ResponseEntity<List<QuoteResponse>> getLikedQuotes(
             @AuthenticationPrincipal SecurityUser user

@@ -34,7 +34,11 @@ public class GroupController {
 
     // 그룹 초대
     @PostMapping("/{groupId}/invite/{friendId}")
-    public ResponseEntity<String> invite(@AuthenticationPrincipal SecurityUser user, @PathVariable Long groupId, @PathVariable Long friendId) {
+    public ResponseEntity<String> invite(
+            @AuthenticationPrincipal SecurityUser user,
+            @PathVariable Long groupId,
+            @PathVariable Long friendId
+    ) {
         groupService.inviteFriend(user.getMember(), groupId, friendId);
         return ResponseEntity.ok("초대가 완료되었습니다.");
     }

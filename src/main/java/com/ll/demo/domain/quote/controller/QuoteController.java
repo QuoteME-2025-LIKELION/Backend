@@ -6,6 +6,7 @@ import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.dto.QuoteTagRequestResponse;
 import com.ll.demo.domain.quote.dto.QuoteTagUpdateReq;
 import com.ll.demo.domain.quote.service.QuoteService;
+import com.ll.demo.domain.quote.dto.QuoteListDto;
 import com.ll.demo.global.gemini.GeminiService;
 import com.ll.demo.global.rsData.RsData;
 import com.ll.demo.global.security.SecurityUser;
@@ -24,7 +25,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/quotes")
@@ -34,10 +38,6 @@ public class QuoteController {
     private final GeminiService geminiService;
     private final QuoteService quoteService;
 
-    /**
-     * 글 작성 (최종 저장) API
-     * [POST] /api/quotes
-     */
     @PostMapping
     public ResponseEntity<QuoteResponse> createQuote(
             @RequestBody QuoteCreateRequest request,
@@ -83,12 +83,18 @@ public class QuoteController {
 
     // 글 목록 조회
     @GetMapping
-    public ResponseEntity<List<QuoteResponse>> getQuotes() {
-        List<QuoteResponse> response = quoteService.getQuoteList();
-        return ResponseEntity.ok(response);
+    public ResponseEntity<QuoteListDto> getQuoteList(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @RequestParam(value = "date", required = true)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        if (securityUser == null) {
+            throw new RuntimeException("로그인이 필요합니다.");
+        }
+        return ResponseEntity.ok(quoteService.getQuoteList(securityUser.getMember(), date));
     }
 
-    // 태그 요청 (수정됨)
+    // 태그 요청
     @PostMapping("/{quoteId}/tag-request")
     public ResponseEntity<RsData> requestTagToQuote(
             @PathVariable Long quoteId,
@@ -100,15 +106,12 @@ public class QuoteController {
                     "401-1. 로그인 인증 정보가 유효하지 않습니다."
             );
         }
-
-        // [수정] 통합된 서비스 메서드 호출 (ID 전달)
-        Long requesterId = securityUser.getMember().getId();
-        quoteService.requestTag(requesterId, quoteId);
-
+        Member requester = securityUser.getMember();
+        quoteService.requestTagToQuote(quoteId, requester);
         return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-3", "태그 요청이 명언 작성자에게 전송되었습니다."));
     }
 
-    // 태그 수정 (PATCH)
+    // 태그 수정
     @PatchMapping("/{quoteId}/tags")
     public ResponseEntity<Void> updateTags(
             @PathVariable Long quoteId,
@@ -119,8 +122,7 @@ public class QuoteController {
         return ResponseEntity.ok().build();
     }
 
-    // 태그 요청 수락 (POST)
-    // URL: /api/quotes/requests/{requestId}/accept
+    // 태그 요청 수락
     @PostMapping("/requests/{requestId}/accept")
     public ResponseEntity<RsData> acceptTagRequest(
             @PathVariable Long requestId,
@@ -133,8 +135,7 @@ public class QuoteController {
         );
     }
 
-    // 태그 요청 거절 (POST)
-    // URL: /api/quotes/requests/{requestId}/reject
+    // 태그 요청 거절
     @PostMapping("/requests/{requestId}/reject")
     public ResponseEntity<RsData> rejectTagRequest(
             @PathVariable Long requestId,
@@ -147,8 +148,7 @@ public class QuoteController {
         );
     }
 
-    // 태그 요청 목록 조회 (작성자용)
-    // GET /api/quotes/{quoteId}/requests
+    // 태그 요청 목록 조회
     @GetMapping("/{quoteId}/requests")
     public ResponseEntity<List<QuoteTagRequestResponse>> getTagRequests(
             @PathVariable Long quoteId,

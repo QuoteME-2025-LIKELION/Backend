@@ -11,7 +11,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-@Table(name = "groups")
+@Table(name = "app_groups") //기존 groups는 MYSQL 예약어라 변경
 public class Group extends BaseTime {
     @Column(nullable = false, length = 10)
     private String name;

@@ -171,8 +171,10 @@ public class MemberService {
         List<Friendship> friendships = friendshipRepository.findAllByMember(member);
 
         return friendships.stream()
-                .map(Friendship::getFriend)
-                .map(FriendResponse::of)
+                .map(friendship -> {
+                    Member friend = friendship.getFriend();
+                    return FriendResponse.of(friend, false);
+                })
                 .toList();
     }
 

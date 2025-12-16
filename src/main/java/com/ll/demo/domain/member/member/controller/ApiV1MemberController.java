@@ -12,6 +12,7 @@ import com.ll.demo.global.rsData.RsData;
 import com.ll.demo.global.security.AuthTokenService;
 import com.ll.demo.standard.rq.Rq;
 import com.ll.demo.global.security.SecurityUser;
+import com.ll.demo.domain.member.member.dto.MemberJoinRespBody;
 import com.ll.demo.domain.member.member.dto.SearchCombinedResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,8 +26,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -40,21 +44,29 @@ public class ApiV1MemberController {
 
     // 회원가입
     @PostMapping("/signup")
-    public RsData<MemberJoinRespBody> join(@RequestBody @Valid MemberJoinReqBody reqBody) {
-        Integer birthYear = Integer.parseInt(reqBody.getBirthYear());
-
+    public RsData<MemberJoinRespBody> signup(@Valid @RequestBody MemberJoinReqBody body, HttpServletResponse response) {
         RsData<Member> joinRs = memberService.join(
-                reqBody.getEmail(),
-                reqBody.getPassword(),
-                birthYear
+                body.getEmail(),
+                body.getPassword(),
+                body.getBirthYear()
         );
 
-        Member memberEntity = joinRs.getData();
+        if (joinRs.getData() == null) return (RsData) joinRs;
 
-        // 토큰 생성하고 리턴하도록 수정
-        String accessToken = authTokenService.genToken(memberEntity, AppConfig.getAccessTokenExpirationSec());
-        MemberDto memberDto = MemberDto.of(memberEntity);
-        return joinRs.newDataOf(new MemberJoinRespBody(memberDto, accessToken));
+        Member member = joinRs.getData();
+
+        // 로그인과 똑같이
+        String accessToken = authTokenService.genToken(member, AppConfig.getAccessTokenExpirationSec());
+        String refreshToken = memberService.genRefreshToken(member);
+
+        rq.setCookie(response, "accessToken", accessToken, AppConfig.getAccessTokenExpirationSec());
+        rq.setCookie(response, "refreshToken", refreshToken, 60 * 60 * 24 * 30);
+
+        SecurityUser securityUser = new SecurityUser(member, member.getEmail(), "", member.getAuthorities());
+        Authentication authentication = new UsernamePasswordAuthenticationToken(securityUser, null, securityUser.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        return RsData.of("200-1", new MemberJoinRespBody(MemberDto.of(member), accessToken));
     }
 
     @Getter
@@ -66,25 +78,20 @@ public class ApiV1MemberController {
 
     @PostMapping("/login")
     public RsData<LoginResponseBody> login(@Valid @RequestBody MemberLoginReqBody body, HttpServletResponse response) {
-        Member member = memberService.findByEmail(body.getEmail()).orElse(null);
+        Member member = memberService.findByEmail(body.getEmail()).orElseThrow(() -> new RuntimeException("해당 회원을 찾을 수 없습니다."));
 
-        if (!memberService.checkPassword(member, body.getPassword())) {
-            throw new GlobalException("400-2", "비밀번호가 일치하지 않습니다.");
-        }
-
-        // 토큰 생성
-        String accessToken = authTokenService.genToken(member, AppConfig.getAccessTokenExpirationSec()); // 5분
+        String accessToken = authTokenService.genToken(member, AppConfig.getAccessTokenExpirationSec());
         String refreshToken = memberService.genRefreshToken(member);
 
-        // 쿠키에도 담고
         rq.setCookie(response, "accessToken", accessToken, AppConfig.getAccessTokenExpirationSec());
-        rq.setCookie(response, "refreshToken", refreshToken, 60 * 60 * 24 * 30); // 30일
+        rq.setCookie(response, "refreshToken", refreshToken, 60 * 60 * 24 * 30);
 
-        // Body에도 담아서 리턴
-        return RsData.of(
-                "로그인 성공",
-                new LoginResponseBody(MemberDto.of(member), accessToken)
-        );
+        // SecurityContext에 인증 정보 수동 등록 > 로그인 직후 null
+        SecurityUser securityUser = new SecurityUser(member, member.getEmail(), "", member.getAuthorities());
+        Authentication authentication = new UsernamePasswordAuthenticationToken(securityUser, null, securityUser.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        return RsData.of("200-1", new LoginResponseBody(MemberDto.of(member), accessToken));
     }
 
     @PostMapping("/logout")

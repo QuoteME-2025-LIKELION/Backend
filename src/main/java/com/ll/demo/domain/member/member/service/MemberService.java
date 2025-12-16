@@ -47,20 +47,21 @@ public class MemberService {
         return memberRepository.findByEmail(email);
     }
 
-    // 회원가입
     @Transactional
-    public RsData<Member> join(String email, String password, Integer birthYear) {
-        // 이메일 중복 체크
-        findByEmail(email).ifPresent(ignored -> {
+    public RsData<Member> join(String email, String password, String birthYear) {
+        memberRepository.findByEmail(email).ifPresent(ignored -> {
             throw new GlobalException("400-1", "이미 존재하는 이메일");
         });
+        // 닉네임 자동 생성 - 리팩토링?
+        String nickname = email.split("@")[0];
 
-        // 새로운 회원 객체
         Member member = Member.builder()
                 .email(email)
-                .password(passwordEncoder.encode(password))  // 비밀번호 암호화
-                .birthYear(String.valueOf(birthYear))
+                .password(passwordEncoder.encode(password))
+                .nickname(nickname)
+                .birthYear(birthYear)
                 .build();
+
         memberRepository.save(member);
         return RsData.of("회원가입 완료", member);
     }
@@ -183,7 +184,7 @@ public class MemberService {
     // 리프레시 토큰 생성 저장
     @Transactional
     public String genRefreshToken(Member member) {
-        String refreshToken = authTokenService.genToken(member, 60 * 60 * 24 * 30); // 30일짜리 토큰 생성
+        String refreshToken = authTokenService.genToken(member, 60 * 60 * 24 * 30); // 30일
         member.setRefreshToken(refreshToken);
         return refreshToken;
     }

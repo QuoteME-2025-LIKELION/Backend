@@ -44,6 +44,7 @@ public class SecurityConfig {
                                 .permitAll()
                                 .requestMatchers(HttpMethod.GET, "/g/*")
                                 .permitAll()
+                                .requestMatchers("/", "/api/**", "/favicon.ico", "/error").permitAll()
                                 .anyRequest()
                                 .authenticated()
                 )

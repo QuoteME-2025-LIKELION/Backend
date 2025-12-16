@@ -21,6 +21,7 @@ import com.ll.demo.domain.group.group.repository.GroupRepository;
 import com.ll.demo.domain.group.group.entity.Group;
 import com.ll.demo.domain.group.group.dto.GroupSearchResponse;
 import com.ll.demo.domain.member.member.dto.SearchCombinedResponse;
+import com.ll.demo.global.security.AuthTokenService;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Collections;
@@ -33,6 +34,7 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class MemberService {
 
+    private final AuthTokenService authTokenService;
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final FriendshipRepository friendshipRepository;
@@ -178,4 +180,11 @@ public class MemberService {
                 .toList();
     }
 
+    // 리프레시 토큰 생성 저장
+    @Transactional
+    public String genRefreshToken(Member member) {
+        String refreshToken = authTokenService.genToken(member, 60 * 60 * 24 * 30); // 30일짜리 토큰 생성
+        member.setRefreshToken(refreshToken);
+        return refreshToken;
+    }
 }

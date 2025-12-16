@@ -65,26 +65,22 @@ public class ApiV1MemberController {
     }
 
     @PostMapping("/login")
-    public RsData<LoginResponseBody> login(
-            HttpServletResponse response,
-            @RequestBody @Valid MemberLoginReqBody reqBody
-    ) {
-        Member member = memberService.findByEmail(reqBody.getEmail())
-                .orElseThrow(() -> new GlobalException("400-1", "존재하지 않는 회원입니다."));
+    public RsData<LoginResponseBody> login(@Valid @RequestBody MemberLoginReqBody body, HttpServletResponse response) {
+        Member member = memberService.findByEmail(body.getEmail()).orElse(null);
 
-        if (!memberService.checkPassword(member, reqBody.getPassword())) {
+        if (!memberService.checkPassword(member, body.getPassword())) {
             throw new GlobalException("400-2", "비밀번호가 일치하지 않습니다.");
         }
 
         // 토큰 생성
         String accessToken = authTokenService.genToken(member, AppConfig.getAccessTokenExpirationSec()); // 5분
-        String refreshToken = member.getRefreshToken();
+        String refreshToken = memberService.genRefreshToken(member);
 
-        // 쿠키에도 담고 (기존 로직 유지)
+        // 쿠키에도 담고
         rq.setCookie(response, "accessToken", accessToken, AppConfig.getAccessTokenExpirationSec());
-        rq.setCookie(response, "refreshToken", refreshToken, 60 * 60 * 24 * 30); // 수명 30일
+        rq.setCookie(response, "refreshToken", refreshToken, 60 * 60 * 24 * 30); // 30일
 
-        // ▼▼▼ [수정됨] Body에도 담아서 리턴! ▼▼▼
+        // Body에도 담아서 리턴
         return RsData.of(
                 "로그인 성공",
                 new LoginResponseBody(MemberDto.of(member), accessToken)

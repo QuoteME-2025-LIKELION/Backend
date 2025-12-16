@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
+import jakarta.persistence.EntityNotFoundException;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -33,15 +35,60 @@ public class GroupService {
     private final GroupJoinRequestRepository groupJoinRequestRepository;
     private final QuoteRepository quoteRepository;
 
-    public void createGroup(Member leader, GroupRequest req) {
-        Group group = Group.builder().name(req.name()).motto(req.motto()).leader(leader).build();
+    // 그룹 생성 - 수정
+    public GroupResponse createGroup(Member leader, GroupRequest req) {
+        Group group = Group.builder()
+                .name(req.name())
+                .motto(req.motto())
+                .leader(leader)
+                .build();
         groupRepository.save(group);
-        groupMemberRepository.save(GroupMember.builder().group(group).member(leader).build());
+
+        // 중복 방지
+        if (!groupMemberRepository.existsByGroupAndMember(group, leader)) {
+            groupMemberRepository.save(GroupMember.builder()
+                    .group(group)
+                    .member(leader)
+                    .build());
+        }
+
+        return new GroupResponse(
+                group.getId(),
+                group.getName(),
+                group.getMotto(),
+                leader.getNickname(),
+                1
+        );
+    }
+
+    // 내가 가입한 그룹 조회
+    @Transactional(readOnly = true)
+    public List<GroupResponse> getMyGroups(Member member) {
+        List<GroupMember> groupMembers = groupMemberRepository.findByMember(member);
+
+        return groupMembers.stream()
+                .map(GroupMember::getGroup)
+                .filter(Objects::nonNull)
+                .map(group -> {
+                    try {
+                        long memberCount = groupMemberRepository.countByGroup(group);
+                        return new GroupResponse(
+                                group.getId(),
+                                group.getName(),
+                                group.getMotto(),
+                                group.getLeader().getNickname(),
+                                memberCount
+                        );
+                    } catch (EntityNotFoundException e) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     // 그룹 초대
-    // 누구나 초대 가능하도록 수정
-    public void inviteFriend(Member requester, Long groupId, Long friendId) { // 🟢 매개변수: friendId (Long)
+    public void inviteFriend(Member requester, Long groupId, Long friendId) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("그룹을 찾을 수 없습니다."));
 
@@ -60,18 +107,7 @@ public class GroupService {
         groupMemberRepository.save(newMember);
     }
 
-    @Transactional(readOnly = true)
-    public List<GroupResponse> getMyGroups(Member member) {
-        return groupMemberRepository.findByMember(member).stream()
-                .map(gm -> new GroupResponse(
-                        gm.getGroup().getId(),
-                        gm.getGroup().getName(),
-                        gm.getGroup().getMotto(),
-                        gm.getGroup().getLeader().getNickname(),
-                        groupMemberRepository.countByGroup(gm.getGroup())
-                )).toList();
-    }
-
+    // 탈퇴나 삭제
     public void removeOrLeaveMember(Member requester, Long groupId, Long targetId) {
         Group group = groupRepository.findById(groupId).orElseThrow();
         GroupMember targetGM = groupMemberRepository.findByGroupAndMember(group, memberRepository.findById(targetId).orElseThrow()).orElseThrow();
@@ -108,24 +144,39 @@ public class GroupService {
         Group group = joinReq.getGroup();
 
         if (!group.getLeader().getId().equals(leader.getId())) throw new RuntimeException("권한 부족");
+
+        // 이미 멤버인지 확인
+        if (groupMemberRepository.existsByGroupAndMember(group, joinReq.getRequester())) {
+            joinReq.accept();
+            return;
+        }
+
         if (groupMemberRepository.countByGroup(group) >= 5) throw new RuntimeException("인원 초과");
 
         joinReq.accept();
         groupMemberRepository.save(GroupMember.builder().group(group).member(joinReq.getRequester()).build());
     }
 
-    // 그룹 상세 조회
+    // 그룹 상세 조회 - 수정
     @Transactional(readOnly = true)
     public GroupDetailResponse getGroupDetail(Long groupId) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("그룹을 찾을 수 없습니다."));
 
         List<GroupMember> groupMembers = groupMemberRepository.findByGroup(group);
-        List<Member> members = groupMembers.stream().map(GroupMember::getMember).toList();
+        List<Member> members = groupMembers.stream()
+                .map(GroupMember::getMember)
+                .toList();
+
         long totalQuoteCount = quoteRepository.countByAuthorIn(members);
 
         List<GroupDetailResponse.MemberInfo> memberInfos = members.stream()
-                .map(m -> new GroupDetailResponse.MemberInfo(m.getId(), m.getNickname()))
+                .map(m -> new GroupDetailResponse.MemberInfo(
+                        m.getId(),
+                        m.getNickname(),
+                        m.getProfileImage(),
+                        m.getIntroduction()
+                ))
                 .collect(Collectors.toList());
 
         return new GroupDetailResponse(

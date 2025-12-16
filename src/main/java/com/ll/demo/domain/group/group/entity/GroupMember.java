@@ -10,6 +10,11 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@Table(
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"group_id", "member_id"})
+        }
+)
 public class GroupMember extends BaseTime {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")

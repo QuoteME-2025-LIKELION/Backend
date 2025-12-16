@@ -9,9 +9,14 @@ public record GroupDetailResponse(
         String motto,
         String leaderNickname,
         long memberCount,
-        long totalQuoteCount, // 그룹원들 총 명언 수
+        long totalQuoteCount,
         LocalDateTime createdAt,
         List<MemberInfo> members
 ) {
-    public record MemberInfo(Long id, String nickname) {}
+    public record MemberInfo(
+            Long id,
+            String nickname,
+            String profileImage,
+            String introduction
+    ) {}
 }

@@ -11,6 +11,7 @@ import java.security.Key;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -54,5 +55,10 @@ public class AuthTokenService {
                 .parseClaimsJws(token);
 
         return claims.getBody();
+    }
+
+    // 리프레시 토큰 - 수정
+    public String genRefreshToken() {
+        return UUID.randomUUID().toString();
     }
 }

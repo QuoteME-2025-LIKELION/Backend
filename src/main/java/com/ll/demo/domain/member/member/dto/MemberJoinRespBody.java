@@ -7,5 +7,6 @@ import lombok.Getter;
 @AllArgsConstructor
 public class MemberJoinRespBody {
 
-    private MemberDto item;  // 엔티티>DTO로 변경
+    private MemberDto item;
+    private String accessToken;
 }

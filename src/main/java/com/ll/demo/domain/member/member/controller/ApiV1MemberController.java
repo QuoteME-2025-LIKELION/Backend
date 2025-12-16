@@ -38,6 +38,7 @@ public class ApiV1MemberController {
     private final Rq rq;
     private final AuthTokenService authTokenService;
 
+    // 회원가입
     @PostMapping("/signup")
     public RsData<MemberJoinRespBody> join(@RequestBody @Valid MemberJoinReqBody reqBody) {
         Integer birthYear = Integer.parseInt(reqBody.getBirthYear());
@@ -49,8 +50,11 @@ public class ApiV1MemberController {
         );
 
         Member memberEntity = joinRs.getData();
+
+        // 토큰 생성하고 리턴하도록 수정
+        String accessToken = authTokenService.genToken(memberEntity, AppConfig.getAccessTokenExpirationSec());
         MemberDto memberDto = MemberDto.of(memberEntity);
-        return joinRs.newDataOf(new MemberJoinRespBody(memberDto));
+        return joinRs.newDataOf(new MemberJoinRespBody(memberDto, accessToken));
     }
 
     @Getter

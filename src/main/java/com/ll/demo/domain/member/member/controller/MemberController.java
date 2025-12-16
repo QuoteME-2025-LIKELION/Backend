@@ -33,8 +33,11 @@ public class MemberController {
             throw new GlobalException("400-3", "출생년도(yyyy) 입력");
         }
 
-        RsData<Member> joinRs = memberService.join(email, password, birth_year);
-
+        RsData<Member> joinRs = memberService.join(
+                email,
+                password,
+                String.valueOf(birth_year) // 리팩터링필요
+        );
         return joinRs;
     }
 }

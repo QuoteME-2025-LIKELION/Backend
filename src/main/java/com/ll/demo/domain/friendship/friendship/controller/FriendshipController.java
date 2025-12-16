@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
+
 
 @RestController
 @RequestMapping("/api/friends")
@@ -21,6 +23,8 @@ import java.util.Optional;
 public class FriendshipController {
 
     private final FriendshipService friendshipService;
+
+    // 친구 추가 - 자동
     @PostMapping("/add/{targetId}")
     public ResponseEntity<RsData> addFriendship(
             @PathVariable Long targetId,
@@ -35,5 +39,15 @@ public class FriendshipController {
         Member memberA = securityUser.getMember();
         friendshipService.addFriendship(memberA, targetId);
         return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-1", "친구로 등록되었습니다."));
+    }
+
+    // 친구 삭제
+    @DeleteMapping("/{friendId}")
+    public String removeFriend(
+            @AuthenticationPrincipal SecurityUser user,
+            @PathVariable Long friendId
+    ) {
+        friendshipService.removeFriend(user.getMember(), friendId);
+        return "친구 삭제 완료";
     }
 }

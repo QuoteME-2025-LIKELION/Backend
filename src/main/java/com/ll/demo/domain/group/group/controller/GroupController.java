@@ -73,6 +73,16 @@ public class GroupController {
         return ResponseEntity.ok(groupService.getGroupDetail(groupId));
     }
 
+    // 그룹 삭제 API
+    @DeleteMapping("/{groupId}")
+    public ResponseEntity<String> deleteGroup(
+            @AuthenticationPrincipal SecurityUser user,
+            @PathVariable Long groupId
+    ) {
+        groupService.deleteGroup(user.getMember(), groupId);
+        return ResponseEntity.ok("그룹이 삭제되었습니다.");
+    }
+
     // 그룹 메시지 수정
     @PatchMapping("/{groupId}/motto")
     public ResponseEntity<String> updateMotto(

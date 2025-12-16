@@ -1,7 +1,7 @@
 package com.ll.demo.domain.friendship.friendship.service;
 
 import com.ll.demo.domain.friendship.friendship.entity.Friendship;
-import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository; // 👈 패키지 경로 변경
+import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
 import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
 
 import com.ll.demo.domain.member.member.entity.Member;
@@ -46,5 +46,14 @@ public class FriendshipService {
                 .status(FriendshipStatus.ACCEPTED) // 즉시 ACCEPTED
                 .build();
         friendshipRepository.save(friendshipBtoA);
+    }
+
+    @Transactional
+    public void removeFriend(Member actor, Long friendId) {
+        Member friend = memberRepository.findById(friendId)
+                .orElseThrow(() -> new RuntimeException("해당 회원을 찾을 수 없습니다."));
+        // 쌍방향 삭제
+        friendshipRepository.deleteByMemberAndFriend(actor, friend);
+        friendshipRepository.deleteByMemberAndFriend(friend, actor);
     }
 }

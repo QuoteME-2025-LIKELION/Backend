@@ -15,4 +15,6 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Long> {
     List<Friendship> findByFriendAndStatus(Member friend, FriendshipStatus status);
     //친구 수
     long countByMember(Member member);
+    // 친구삭제
+    void deleteByMemberAndFriend(Member member, Member friend);
 }

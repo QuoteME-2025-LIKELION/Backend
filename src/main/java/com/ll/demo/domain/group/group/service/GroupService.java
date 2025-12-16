@@ -202,4 +202,18 @@ public class GroupService {
         }
         group.setMotto(newMotto);
     }
+
+    // 그룹 자체 삭제
+    @Transactional
+    public void deleteGroup(Member actor, Long groupId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("해당 그룹을 찾을 수 없습니다."));
+
+        // 생성한 사람만 삭제 가능
+        if (!group.getLeader().getId().equals(actor.getId())) {
+            throw new RuntimeException("그룹 삭제 권한이 없습니다.");
+        }
+
+        groupRepository.delete(group);
+    }
 }

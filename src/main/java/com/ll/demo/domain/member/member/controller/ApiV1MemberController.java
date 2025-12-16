@@ -95,21 +95,15 @@ public class ApiV1MemberController {
     }
 
     @PostMapping("/logout")
-    public RsData<?> logout(HttpServletResponse response) {
-        Cookie usernameCookie = new Cookie("actorUsername", "");
-        usernameCookie.setMaxAge(0);
-        usernameCookie.setPath("/");
-        response.addCookie(usernameCookie);
+    public RsData<Void> logout(HttpServletResponse response, @AuthenticationPrincipal SecurityUser user) {
+        // 브라우저 쿠키 삭제
+        rq.setCookie(response, "accessToken", "", 0);
+        rq.setCookie(response, "refreshToken", "", 0);
 
-        Cookie passwordCookie = new Cookie("actorPassword", "");
-        passwordCookie.setMaxAge(0);
-        passwordCookie.setPath("/");
-        response.addCookie(passwordCookie);
-
-        return RsData.of("200-2", "로그아웃 성공");
+        return RsData.of("200-2", null);
     }
 
-    //회원 및 그룹 통합 검색
+    // 회원 및 그룹 통합 검색
     @GetMapping("/search")
     public ResponseEntity<SearchCombinedResponse> searchMembers(
             @RequestParam(value = "keyword", required = true) String keyword,

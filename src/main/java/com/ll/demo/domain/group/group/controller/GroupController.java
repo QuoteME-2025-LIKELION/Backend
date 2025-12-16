@@ -21,13 +21,16 @@ public class GroupController {
 
     // 그룹 생성
     @PostMapping
-    public ResponseEntity<String> createGroup(@AuthenticationPrincipal SecurityUser user, @Valid @RequestBody GroupRequest req) {
-        groupService.createGroup(user.getMember(), req);
-        return ResponseEntity.ok("그룹이 생성되었습니다.");
+    public ResponseEntity<GroupResponse> createGroup(
+                                                      @AuthenticationPrincipal SecurityUser user,
+                                                      @Valid @RequestBody GroupRequest req
+    ) {
+        GroupResponse response = groupService.createGroup(user.getMember(), req);
+        return ResponseEntity.ok(response);
     }
 
     // 내가 가입한 그룹 조회
-    @GetMapping("/me")
+    @GetMapping({"/me", "/me/"})
     public ResponseEntity<List<GroupResponse>> getMyGroups(@AuthenticationPrincipal SecurityUser user) {
         return ResponseEntity.ok(groupService.getMyGroups(user.getMember()));
     }

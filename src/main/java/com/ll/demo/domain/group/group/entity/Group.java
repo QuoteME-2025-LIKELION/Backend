@@ -4,6 +4,8 @@ import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.global.jpa.entity.BaseTime;
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -22,4 +24,9 @@ public class Group extends BaseTime {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "leader_id")
     private Member leader;
+
+    // 그룹 삭제되면 멤버도 삭제
+    @Builder.Default
+    @OneToMany(mappedBy = "group", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<GroupMember> members = new ArrayList<>();
 }

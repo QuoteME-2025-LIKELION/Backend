@@ -39,14 +39,17 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
         String refreshToken = null;
         boolean cookieBased = true;
 
-        String authorization = req.getHeader("Authorization");
+        String authorization = req.getHeader("Authorization"); // 수정 - 요청 헤더 형식을 코드에 맞추기
         if (authorization != null && authorization.startsWith("Bearer ")) {
-            String[] authorizationBits = authorization.substring("Bearer ".length()).split(" ", 2);
-            if (authorizationBits.length == 2) {
-                refreshToken = authorizationBits[0];
-                accessToken = authorizationBits[1];
-                cookieBased = false;
+            String token = authorization.substring(7);
+            String[] bits = token.split(" ");
+            if (bits.length == 2) {
+                refreshToken = bits[0];
+                accessToken = bits[1];
+            } else {
+                accessToken = bits[0]; // 토큰이 하나면 Access Token으로 간주
             }
+            cookieBased = false;
         }
         if (Ut.str.isBlank(accessToken) || Ut.str.isBlank(refreshToken)) {
             accessToken = rq.getCookieValue("accessToken", "");

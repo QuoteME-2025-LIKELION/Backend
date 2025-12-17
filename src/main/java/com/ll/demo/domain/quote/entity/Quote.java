@@ -13,16 +13,15 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import java.time.LocalDateTime;
 
-@AllArgsConstructor
 @Entity
 @Getter
-@NoArgsConstructor(access = PROTECTED)
+@Setter
 @Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class Quote extends BaseTime {
 
     // ▼▼▼ 여기가 핵심입니다! ▼▼▼
@@ -43,4 +42,7 @@ public class Quote extends BaseTime {
     @Builder.Default // Builder 패턴 쓸 때 초기화 방지
     private List<QuoteTag> tags = new ArrayList<>();
 
+    // 게스트용 시간 조작
+    public void setCreateDateForDemo(LocalDateTime dateTime) {this.createDate = dateTime;
+    }
 }

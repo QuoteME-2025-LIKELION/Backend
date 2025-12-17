@@ -27,6 +27,6 @@ public class Group extends BaseTime {
 
     // 그룹 삭제되면 멤버도 삭제
     @Builder.Default
-    @OneToMany(mappedBy = "group", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GroupMember> members = new ArrayList<>();
 }

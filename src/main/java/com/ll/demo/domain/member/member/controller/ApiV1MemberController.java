@@ -31,6 +31,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import jakarta.servlet.http.HttpServletRequest;
+
 
 @RestController
 @RequestMapping("/api/auth")
@@ -117,5 +119,52 @@ public class ApiV1MemberController {
 
         SearchCombinedResponse response = memberService.searchCombined(keyword, currentMemberId);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/guest-login")
+    public RsData<LoginResponseBody> guestLogin(HttpServletResponse response) {
+        Member guest = memberService.findOrCreateGuest();
+
+        String accessToken = authTokenService.genToken(guest, AppConfig.getAccessTokenExpirationSec());
+        String refreshToken = memberService.genRefreshToken(guest);
+
+        rq.setCookie(response, "accessToken", accessToken, AppConfig.getAccessTokenExpirationSec());
+        rq.setCookie(response, "refreshToken", refreshToken, 60 * 60 * 24 * 30);
+
+        SecurityUser securityUser = new SecurityUser(guest, guest.getEmail(), "", guest.getAuthorities());
+        Authentication auth = new UsernamePasswordAuthenticationToken(securityUser, null, securityUser.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        return RsData.of("200-1", new LoginResponseBody(MemberDto.of(guest), accessToken));
+    }
+
+    // 토큰 재발급
+    @PostMapping("/refresh")
+    public RsData<LoginResponseBody> refresh(HttpServletRequest request, HttpServletResponse response) {
+        //System.out.println("=== Cookie Debug Start ===");
+        String refreshToken = null;
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                System.out.println("Cookie Name: " + cookie.getName() + ", Value: " + cookie.getValue());
+                if (cookie.getName().equals("refreshToken")) {
+                    refreshToken = cookie.getValue();
+                }
+            }
+        }
+        System.out.println("Found RefreshToken: " + refreshToken);
+        System.out.println("=== Cookie Debug End ===");
+
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new GlobalException("401-2", "리프레시 토큰이 쿠키에 없습니다.");
+        }
+
+        Member member = memberService.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new GlobalException("401-3", "유효하지 않은 리프레시 토큰입니다."));
+
+        String newAccessToken = authTokenService.genToken(member, AppConfig.getAccessTokenExpirationSec());
+
+        rq.setCookie(response, "accessToken", newAccessToken, AppConfig.getAccessTokenExpirationSec());
+
+        return RsData.of("200-3", new LoginResponseBody(MemberDto.of(member), newAccessToken));
     }
 }

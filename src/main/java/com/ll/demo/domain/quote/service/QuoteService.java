@@ -152,7 +152,7 @@ public class QuoteService {
                     boolean isFriend = friendshipRepository.existsByMemberAndFriend(currentUser, q.getAuthor());
                     List<String> taggedNicknames = quoteTagRepository.findAllByQuote(q).stream()
                             .map(qt -> qt.getMember().getNickname())
-                            .collect(Collectors.toList());
+                            .toList();
                     return QuoteDetailResponse.from(q, taggedNicknames, isLiked, isFriend);
                 })
                 .toList();
@@ -209,7 +209,7 @@ public class QuoteService {
         List<Quote> myQuotes = quoteRepository.findAllByAuthorId(memberId);
 
         return myQuotes.stream()
-                .map(QuoteResponse::from)
+                .map(QuoteResponse::new)
                 .collect(Collectors.toList());
     }
 
@@ -405,7 +405,7 @@ public class QuoteService {
 
         return requests.stream()
                 .map(QuoteTagRequestResponse::from)
-                .toList();
+                .collect(Collectors.toList());
     }
 }
 

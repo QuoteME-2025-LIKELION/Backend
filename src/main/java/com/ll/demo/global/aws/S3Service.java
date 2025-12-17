@@ -1,6 +1,7 @@
 package com.ll.demo.global.aws;
 
 import io.awspring.cloud.s3.S3Template;
+import java.io.IOException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,9 +13,10 @@ public class S3Service {
 
     private final S3Template s3Template; // Spring Cloud AWS가 제공하는 도구
 
-    @Value("${spring.cloud.aws.s3.bucket}")
-    private String bucket;
+    //@Value("${spring.cloud.aws.s3.bucket}")
+    //private String bucket;
 
+    private String bucket = "quoteme-likelion-bucket";
     public String uploadFile(MultipartFile file) throws IOException {
         // 1. 파일 이름 중복 방지를 위해 UUID 생성
         String originalFilename = file.getOriginalFilename();

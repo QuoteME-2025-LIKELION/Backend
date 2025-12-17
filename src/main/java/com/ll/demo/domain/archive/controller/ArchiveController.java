@@ -32,11 +32,8 @@ public class ArchiveController {
 
     // 내가 작성한 명언 목록
     @GetMapping("/me")
-    public ResponseEntity<List<QuoteResponse>> getMyQuotes(
-            @AuthenticationPrincipal SecurityUser user
-    ) {
-        List<QuoteResponse> result = quoteService.findMyQuotes(user.getMember().getId());
-        return ResponseEntity.ok(result);
+    public List<QuoteResponse> getMyQuotes(@AuthenticationPrincipal SecurityUser user) {
+        return quoteService.findMyQuotes(user.getMember().getId());
     }
 
     // 내가 좋아요한 명언 목록 조회

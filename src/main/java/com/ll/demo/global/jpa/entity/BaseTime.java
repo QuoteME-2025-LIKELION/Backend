@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseTime extends BaseEntity {
     @CreatedDate
-    private LocalDateTime createDate;
+    protected LocalDateTime createDate; // private -> protected
+
     @LastModifiedDate
     private LocalDateTime modifyDate;
 

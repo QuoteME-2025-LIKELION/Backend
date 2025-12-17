@@ -39,10 +39,15 @@ public record QuoteDetailResponse(
     }
 
     private static String formatDuration(Duration duration) {
+        long days = duration.toDays();
+        if (days > 0) return days + "일 전";
+
         long hours = duration.toHours();
         if (hours > 0) return hours + "시간 전";
+
         long minutes = duration.toMinutes();
         if (minutes > 0) return minutes + "분 전";
+
         return "방금 전";
     }
 }

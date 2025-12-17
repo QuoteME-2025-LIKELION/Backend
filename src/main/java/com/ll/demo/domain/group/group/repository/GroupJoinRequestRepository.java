@@ -9,7 +9,7 @@ import java.util.Optional;
 
 public interface GroupJoinRequestRepository extends JpaRepository<GroupJoinRequest, Long> {
     // 사용자, 요청 중복 확인
-    Optional<GroupJoinRequest> findByGroupAndRequester(Group group, Member requester, JoinStatus status);
+    Optional<GroupJoinRequest> findByGroupAndRequesterAndStatus(Group group, Member requester, JoinStatus status);
     // 여부만 확인
     boolean existsByGroupAndRequesterAndStatus(Group group, Member requester, JoinStatus status);
 }

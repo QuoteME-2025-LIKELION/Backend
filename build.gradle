@@ -31,17 +31,14 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
     compileOnly 'org.springframework.boot:spring-boot-starter-data-redis'
     compileOnly 'org.springframework.session:spring-session-data-redis'
-
     runtimeOnly 'mysql:mysql-connector-java:8.0.33'
-
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-
     implementation 'com.h2database:h2'
     runtimeOnly 'com.h2database:h2'
-
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -53,7 +50,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
     implementation 'javax.persistence:javax.persistence-api:2.2'
     implementation 'com.google.genai:google-genai:0.4.0'
-
+    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
     runtimeOnly 'com.mysql:mysql-connector-j'
     implementation 'org.springframework.security:spring-security-core'
 }

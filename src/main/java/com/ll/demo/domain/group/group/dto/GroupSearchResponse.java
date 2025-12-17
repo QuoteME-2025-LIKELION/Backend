@@ -11,6 +11,7 @@ public class GroupSearchResponse {
     private String name;
     private String motto;
     private String leaderNickname;
+    private long memberCount;
 
     public static GroupSearchResponse of(Group group) {
         return GroupSearchResponse.builder()
@@ -18,6 +19,7 @@ public class GroupSearchResponse {
                 .name(group.getName())
                 .motto(group.getMotto())
                 .leaderNickname(group.getLeader().getNickname())
+                .memberCount(group.getMembers() != null ? group.getMembers().size() : 0)
                 .build();
     }
 }

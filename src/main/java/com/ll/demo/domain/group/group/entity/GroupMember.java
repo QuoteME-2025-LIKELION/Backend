@@ -17,7 +17,7 @@ import lombok.*;
 )
 public class GroupMember extends BaseTime {
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id")
+    @JoinColumn(name = "group_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT)) // 테스트용-검토 필요
     private Group group;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -19,6 +19,6 @@ public class AppConfig {
     }
 
     public static int getAccessTokenExpirationSec() {
-        return 20;
-    } // 60 * 5
+        return 60 * 5;
+    } //
 }

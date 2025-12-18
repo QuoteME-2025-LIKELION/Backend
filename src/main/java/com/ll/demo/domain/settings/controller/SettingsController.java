@@ -25,9 +25,12 @@ public class SettingsController {
     // 내 프로필 조회
     @GetMapping("/profile")
     public ResponseEntity<ProfileResponse> getProfile(
-            @AuthenticationPrincipal Member member
+            @AuthenticationPrincipal SecurityUser securityUser // SecurityUser로 변경
     ) {
-        Long memberId = member.getId();
+        if (securityUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+        Long memberId = securityUser.getMember().getId();
         ProfileResponse response = memberService.getProfile(memberId);
 
         return ResponseEntity.ok(response);

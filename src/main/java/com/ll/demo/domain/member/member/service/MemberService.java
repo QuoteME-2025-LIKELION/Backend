@@ -1,44 +1,40 @@
 package com.ll.demo.domain.member.member.service;
 
-import com.ll.demo.domain.member.member.entity.Member;
-import com.ll.demo.domain.member.member.repository.MemberRepository;
-import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
-import com.ll.demo.global.exceptions.GlobalException;
-import com.ll.demo.global.rsData.RsData;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import com.ll.demo.domain.member.member.dto.ProfileResponse;
-import com.ll.demo.domain.member.member.dto.ProfileUpdateRequest;
-import com.ll.demo.domain.member.member.dto.MemberSearchResponse;
-import com.ll.demo.domain.member.member.dto.FriendResponse;
-import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
 import com.ll.demo.domain.friendship.friendship.entity.Friendship;
+import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
+import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
+import com.ll.demo.domain.group.group.dto.GroupSearchResponse;
+import com.ll.demo.domain.group.group.entity.Group;
+import com.ll.demo.domain.group.group.entity.GroupMember;
 import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
 import com.ll.demo.domain.group.group.repository.GroupRepository;
-import com.ll.demo.domain.group.group.entity.Group;
-import com.ll.demo.domain.group.group.dto.GroupSearchResponse;
+import com.ll.demo.domain.member.member.dto.FriendResponse;
+import com.ll.demo.domain.member.member.dto.MemberSearchResponse;
+import com.ll.demo.domain.member.member.dto.ProfileResponse;
+import com.ll.demo.domain.member.member.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.member.member.dto.SearchCombinedResponse;
-import com.ll.demo.global.security.AuthTokenService;
+import com.ll.demo.domain.member.member.entity.Member;
+import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
 import com.ll.demo.domain.quote.entity.QuoteTag;
 import com.ll.demo.domain.quote.repository.QuoteLikeRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
 import com.ll.demo.domain.quote.repository.QuoteTagRepository;
-import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Arrays;
+import com.ll.demo.global.exceptions.GlobalException;
+import com.ll.demo.global.rsData.RsData;
+import com.ll.demo.global.security.AuthTokenService;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import com.ll.demo.domain.group.group.entity.GroupMember;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -112,23 +108,20 @@ public class MemberService {
 
     // 프로필 정보 수정
     @Transactional
-    public void updateProfile(Long memberId, ProfileUpdateRequest request) {
+    public void updateProfile(Long memberId, ProfileUpdateRequest request, String imageUrl) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
 
-        String newProfileImageUrl = member.getProfileImage(); // 기존 URL 유지
-
-        if (request.getProfileImage() != null && !request.getProfileImage().isEmpty()) {
-            // 임시 파일 업로드 로직 - !재검토 필요!
-            // String uploadedUrl = fileStorageService.upload(request.getProfileImage());
-            // newProfileImageUrl = uploadedUrl;
-            newProfileImageUrl = "/images/profile/" + memberId + "_new_image.jpg"; // 임시 URL
-        }
-        // 기존 이미지 삭제?
-
+        // 1. 닉네임, 소개글 변경 (기존 로직 유지)
         member.setNickname(request.getNickname());
         member.setIntroduction(request.getIntroduction());
-        member.setProfileImage(newProfileImageUrl);
+
+        // 2. 프로필 이미지 변경 (수정된 핵심 로직)
+        // 컨트롤러에서 넘겨준 S3 URL이 있다면, 그것으로 DB를 업데이트합니다.
+        // (imageUrl이 null이면, 새 사진을 안 올렸다는 뜻이니 기존 사진을 유지합니다.)
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            member.setProfileImage(imageUrl);
+        }
     }
 
 //    // 닉네임, 이메일, 그룹명으로 회원 검색

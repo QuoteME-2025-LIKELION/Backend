@@ -13,7 +13,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .allowedOrigins(
                         "http://localhost:5173",  // 로컬 프론트엔드 개발 환경
                         "https://quoteme.shop",   // 실제 배포된 프론트엔드 주소 (나중에 필요)
-                        "http://localhost:8080"   // (혹시 모를 로컬 백엔드 테스트)
+                        "http://localhost:8080",
+                        "https://quote--me.vercel.app",   // Vercel 배포 주소
+                        "https://www.quoteme.site"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS") // 허용할 HTTP 메서드
                 .allowedHeaders("*") // 모든 헤더 허용

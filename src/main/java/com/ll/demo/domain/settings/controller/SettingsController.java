@@ -15,8 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -46,7 +46,11 @@ public class SettingsController {
     }
 
     // 프로필 수정
-    @PutMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE) // 멀티파트 요청 허용
+    @RequestMapping(
+            value = "/profile",
+            method = {RequestMethod.PUT, RequestMethod.POST},
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public ResponseEntity<Void> updateProfile(
             // JSON 데이터는 'data'라는 이름으로
             @RequestPart(value = "data") ProfileUpdateRequest request,

@@ -95,6 +95,8 @@ public class SecurityConfig {
         // 허용할 주소 (프론트엔드 & 로컬)
         configuration.addAllowedOrigin("http://localhost:5173");
         configuration.addAllowedOrigin("https://quoteme.shop");
+        configuration.addAllowedOrigin("https://quote--me.vercel.app");
+        configuration.addAllowedOrigin("https://www.quoteme.site/");
 
         // 나머지 허용 설정
         configuration.addAllowedMethod("*");

@@ -1,6 +1,5 @@
 package com.ll.demo.domain.quote.controller;
 
-import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.quote.dto.AiSummaryReq;
 import com.ll.demo.domain.quote.dto.QuoteCreateRequest;
 import com.ll.demo.domain.quote.dto.QuoteListDto;
@@ -106,8 +105,12 @@ public class QuoteController {
                     "401-1. 로그인 인증 정보가 유효하지 않습니다."
             );
         }
-        Member requester = securityUser.getMember();
-        quoteService.requestTagToQuote(quoteId, requester);
+        // [수정 1] Member 객체 통째로 넘기는 게 아니라, ID만 꺼냅니다.
+        Long requesterId = securityUser.getMember().getId();
+
+        // [수정 2] 서비스에 새로 만든 통합 메서드 'requestTag'를 호출합니다.
+        // (빨간줄이 떴던 quoteService.requestTagToQuote(...) 지우고 이걸 넣으세요!)
+        quoteService.requestTag(requesterId, quoteId);
         return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-3", "태그 요청이 명언 작성자에게 전송되었습니다."));
     }
 

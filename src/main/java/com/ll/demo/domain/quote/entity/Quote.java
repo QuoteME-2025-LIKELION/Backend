@@ -1,7 +1,5 @@
 package com.ll.demo.domain.quote.entity;
 
-import static lombok.AccessLevel.PROTECTED;
-
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.global.jpa.entity.BaseTime;
 import jakarta.persistence.CascadeType;
@@ -11,10 +9,15 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.*;
-import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
@@ -30,6 +33,10 @@ public class Quote extends BaseTime {
     @JoinColumn(name = "author_id") // DB에는 'author_id'라는 컬럼으로 저장됨
     private Member author;
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+    @OneToMany(mappedBy = "quote", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default // 빌더 패턴 쓸 때 리스트 초기화 유지
+    private List<QuoteTag> quoteTags = new ArrayList<>();
 
     @Column(nullable = false)
     private String content; // 명언 내용

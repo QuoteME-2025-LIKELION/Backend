@@ -1,8 +1,14 @@
 package com.ll.demo.domain.quote.service;
 
+import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
+import com.ll.demo.domain.group.group.entity.GroupMember;
+import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
+import com.ll.demo.domain.quote.dto.MyQuoteResponse;
+import com.ll.demo.domain.quote.dto.QuoteDetailResponse;
+import com.ll.demo.domain.quote.dto.QuoteListDto;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.dto.QuoteTagRequestResponse;
 import com.ll.demo.domain.quote.entity.Quote;
@@ -16,28 +22,18 @@ import com.ll.demo.domain.quote.repository.QuoteTagRepository;
 import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.security.SecurityUser;
-import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
-import com.ll.demo.domain.group.group.entity.GroupMember;
-import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
-import com.ll.demo.domain.quote.dto.MyQuoteResponse;
-import com.ll.demo.domain.quote.dto.QuoteDetailResponse;
-import com.ll.demo.domain.quote.dto.QuoteListDto;
-import com.ll.demo.domain.quote.dto.QuoteResponse;
-
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -130,29 +126,49 @@ public class QuoteService {
         quoteLikeRepository.findByQuoteAndMember(quote, member)
                 .ifPresent(quoteLikeRepository::delete);
     }
-
-    // 명언 목록 조회 - 날짜 필터링+필요정보
+    // 명언 목록 조회 - 날짜 필터링 + 필요 정보 (수정됨)
     public QuoteListDto getQuoteList(Member currentUser, LocalDate date) {
 
         LocalDateTime startDate = date.atStartOfDay();
         LocalDateTime endDate = date.plusDays(1).atStartOfDay();
 
         List<Quote> quotes = quoteRepository.findAllByDateRange(startDate, endDate);
+
+        // 1. 내 명언 목록 (수정: ID, 태그 정보 포함)
         List<MyQuoteResponse> myQuotes = quotes.stream()
                 .filter(q -> q.getAuthor().getId().equals(currentUser.getId()))
                 .map(q -> {
                     String groupName = getQuoteGroupName(q);
-                    return MyQuoteResponse.from(q, groupName);
+
+                    // ★ [추가] 내 글에 달린 태그 닉네임 가져오기
+                    List<String> taggedNicknames = quoteTagRepository.findAllByQuote(q).stream()
+                            .map(qt -> qt.getMember().getNickname()) // Entity 필드명(member/taggedMember) 확인 필요
+                            .toList();
+
+                    // ★ [수정] DTO 생성 시 ID와 태그 리스트 전달
+                    // (MyQuoteResponse 생성자 순서에 맞춰서 넣어주세요)
+                    return new MyQuoteResponse(
+                            q.getId(),
+                            q.getContent(),
+                            groupName,
+                            q.getAuthor().getNickname(),
+                            String.valueOf(q.getAuthor().getBirthYear()),
+                            taggedNicknames
+                    );
                 })
                 .toList();
+
+        // 2. 친구/타인 명언 목록
         List<QuoteDetailResponse> otherQuotes = quotes.stream()
                 .filter(q -> !q.getAuthor().getId().equals(currentUser.getId()))
                 .map(q -> {
                     boolean isLiked = quoteLikeRepository.existsByQuoteAndMember(q, currentUser);
                     boolean isFriend = friendshipRepository.existsByMemberAndFriend(currentUser, q.getAuthor());
+
                     List<String> taggedNicknames = quoteTagRepository.findAllByQuote(q).stream()
                             .map(qt -> qt.getMember().getNickname())
                             .toList();
+
                     return QuoteDetailResponse.from(q, taggedNicknames, isLiked, isFriend);
                 })
                 .toList();
@@ -183,28 +199,6 @@ public class QuoteService {
         return null;
     }
 
-    // 명언에 태그 요청하는 메서드
-    @Transactional
-    public void tagRequestQuote(Member requester, Long quoteId) {
-        Quote quote = quoteRepository.findById(quoteId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "명언을 찾을 수 없습니다."));
-
-        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 해당 글에 태그 요청을 하셨습니다.");
-        }
-
-        if (requester.getId().equals(quote.getAuthor().getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인 글에는 태그 요청을 할 수 없습니다.");
-        }
-
-        QuoteTagRequest tagRequest = QuoteTagRequest.builder()
-                .quote(quote)
-                .requester(requester)
-                .build();
-
-        quoteTagRequestRepository.save(tagRequest);
-    }
-
     public List<QuoteResponse> findMyQuotes(Long memberId) {
         List<Quote> myQuotes = quoteRepository.findAllByAuthorId(memberId);
 
@@ -233,32 +227,6 @@ public class QuoteService {
                 .map(QuoteResponse::new)
                 .toList();
     }
-
-    // 태그 요청
-    @Transactional
-    public void requestTagToQuote(Long quoteId, Member requester) {
-        Quote quote = quoteRepository.findById(quoteId)
-                .orElseThrow(() -> new GlobalException("404", "해당 명언을 찾을 수 없습니다."));
-        if (quote.getAuthor().getId().equals(requester.getId())) {
-            throw new GlobalException("400", "자신이 작성한 글에는 태그 요청을 할 수 없습니다.");
-        }
-        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
-            throw new GlobalException("409", "이미 해당 명언에 태그 요청을 하였습니다.");
-        }
-        QuoteTagRequest tagRequest = QuoteTagRequest.builder()
-                .quote(quote)
-                .requester(requester)
-                .build();
-        quoteTagRequestRepository.save(tagRequest);
-    }
-
-//    // 좋아요한 글 목록 조회 - 이전 버전
-//    public List<QuoteResponse> findLikedQuotes(Long memberId) {
-//        List<Quote> likedQuotes = quoteRepository.findQuotesLikedByMember(memberId);
-//        return likedQuotes.stream()
-//                .map(QuoteResponse::new)
-//                .toList();
-//    }
 
     // 태그 수정 기능
     @Transactional

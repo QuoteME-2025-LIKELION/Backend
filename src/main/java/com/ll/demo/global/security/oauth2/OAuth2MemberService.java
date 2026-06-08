@@ -3,13 +3,14 @@ package com.ll.demo.global.security.oauth2;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.service.MemberService;
 import com.ll.demo.domain.member.member.type.MemberProvider;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +45,10 @@ public class OAuth2MemberService extends DefaultOAuth2UserService {
             @SuppressWarnings("unchecked")
             Map<String, Object> kakaoProfile = kakaoAccount != null ? (Map<String, Object>) kakaoAccount.get("profile") : null;
             email = kakaoAccount != null ? (String) kakaoAccount.get("email") : null;
+            // 이메일 제공 안 하면 providerId 기반 가짜 이메일 생성
+            if (email == null || email.isBlank()) {
+                email = providerId + "@kakao.user";
+            }
             nickname = kakaoProfile != null ? (String) kakaoProfile.get("nickname") : null;
             profileImage = kakaoProfile != null ? (String) kakaoProfile.get("profile_image_url") : null;
         } else {

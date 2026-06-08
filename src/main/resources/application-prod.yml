@@ -20,7 +20,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create
       defer-datasource-initialization: false
     properties:
       hibernate:
@@ -87,6 +87,94 @@ custom:
     cookieDomain: "${custom.prod.cookieDomain}"
     frontUrl: "${custom.prod.frontUrl}"
     backUrl: "${custom.prod.backUrl}"
+
+# server:
+#   port: 8070
+
+# spring:
+#   output:
+#     ansi:
+#       enabled: NEVER
+
+#   datasource:
+#     url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?useSSL=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+#     username: ${DB_USERNAME}
+#     password: ${DB_PASSWORD}
+#     driver-class-name: com.mysql.cj.jdbc.Driver
+#     hikari:
+#       maximum-pool-size: 10
+#       connection-timeout: 30000
+
+#   jpa:
+#     open-in-view: false
+#     hibernate:
+#       ddl-auto: validate
+#       defer-datasource-initialization: false
+#     properties:
+#       hibernate:
+#         default_batch_fetch_size: 100
+#         format_sql: false
+#         highlight_sql: false
+#         use_sql_comments: false
+#         dialect: org.hibernate.dialect.MySQL8Dialect
+
+#   # OAuth2 소셜 로그인 (prod credentials)
+#   security:
+#     oauth2:
+#       client:
+#         registration:
+#           google:
+#             client-id: ${GOOGLE_CLIENT_ID}
+#             client-secret: ${GOOGLE_CLIENT_SECRET}
+#           kakao:
+#             client-id: ${KAKAO_CLIENT_ID}
+#             client-secret: ${KAKAO_CLIENT_SECRET}
+
+#   # AWS S3 (prod credentials — IAM Role 사용 시 credentials 블록 삭제 가능)
+#   cloud:
+#     aws:
+#       credentials:
+#         access-key: ${AWS_ACCESS_KEY}
+#         secret-key: ${AWS_SECRET_KEY}
+#       s3:
+#         bucket: ${AWS_S3_BUCKET}
+#       region:
+#         static: ap-northeast-2
+#       stack:
+#         auto: false
+
+# logging:
+#   level:
+#     com.ll.demo: INFO
+#     org.hibernate.SQL: WARN
+#     org.hibernate.orm.jdbc.bind: WARN
+#     org.hibernate.orm.jdbc.extract: WARN
+#     org.springframework.transaction.interceptor: WARN
+
+# custom:
+#   secret:
+#     key: ${SECRET_KEY}
+#     jwt:
+#       secretKey: ${JWT_SECRET_KEY}
+#   gemini:
+#     api-key: ${GEMINI_API_KEY}
+
+#   # OAuth2 콜백 URI (프론트엔드 prod 주소)
+#   oauth2:
+#     redirect-uri: ${FRONT_URL}/oauth2/callback
+#     failure-uri: ${FRONT_URL}/login?error=oauth2
+
+#   # prod 도메인 정보
+#   prod:
+#     cookieDomain: ${COOKIE_DOMAIN}
+#     frontUrl: ${FRONT_URL}
+#     backUrl: ${BACK_URL}
+
+#   site:
+#     name: "QUOTEME"
+#     cookieDomain: "${custom.prod.cookieDomain}"
+#     frontUrl: "${custom.prod.frontUrl}"
+#     backUrl: "${custom.prod.backUrl}"
 
 # server:
 #   port: 8070

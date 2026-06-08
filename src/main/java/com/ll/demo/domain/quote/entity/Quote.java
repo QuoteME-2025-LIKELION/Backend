@@ -1,6 +1,7 @@
 package com.ll.demo.domain.quote.entity;
 
 import com.ll.demo.domain.member.member.entity.Member;
+import com.ll.demo.domain.group.group.entity.Group;
 import com.ll.demo.global.jpa.entity.BaseTime;
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,6 +21,10 @@ public class Quote extends BaseTime {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id")
     private Member author;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    private Group group;
 
     @OneToMany(mappedBy = "quote", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

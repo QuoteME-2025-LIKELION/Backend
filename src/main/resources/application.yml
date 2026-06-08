@@ -12,26 +12,57 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: "http://ec2-3-38-96-140.ap-northeast-2.compute.amazonaws.com:8070/login/oauth2/code/google"
+            scope:
+              - profile
+              - email
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://ec2-3-38-96-140.ap-northeast-2.compute.amazonaws.com:8070/login/oauth2/code/kakao"
+            scope:
+              - profile_nickname
+              - account_email
+
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+
   datasource:
-    url: jdbc:h2:./db_dev;DB_CLOSE_DELAY=-1; # DB 일관성 유지
+    url: jdbc:h2:./db_dev;DB_CLOSE_DELAY=-1;
     username: admin
-    password:
+    password: 0824
     driver-class-name: org.h2.Driver
+
   jackson:
     serialization:
       fail-on-empty-beans: false
+
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: update
-      defer-datasource-initialization: true # 트랜잭션 충돌 방지
+    defer-datasource-initialization: true
     properties:
       hibernate:
         default_batch_fetch_size: 100
         format_sql: true
         highlight_sql: true
         use_sql_comments: true
-spring doc:
+
+springdoc:
   default-produces-media-type: application/json
 logging:
   level:
@@ -40,22 +71,22 @@ logging:
     org.hibernate.orm.jdbc.bind: TRACE
     org.hibernate.orm.jdbc.extract: TRACE
     org.springframework.transaction.interceptor: TRACE
-custom:
-  dev:
-    cookieDomain: localhost
-    frontUrl: "http://${custom.dev.cookieDomain}:5173"
-    backUrl: "http://${custom.dev.cookieDomain}:${server.port}"
-  prod:
-    cookieDomain: www.surl.oa.gg
-    frontUrl: "https://${custom.prod.cookieDomain}"
-    backUrl: "https://api.${custom.prod.cookieDomain}"
-  site:
-    name: "QUOTEME DEV"
-    cookieDomain: "${custom.dev.cookieDomain}"
-    frontUrl: "${custom.dev.frontUrl}"
-    backUrl: "${custom.dev.backUrl}"
-  accessToken:
-    expirationSec: 600
+  custom:
+    dev:
+      cookieDomain: "3.38.96.140"
+      frontUrl: "http://localhost:5173"
+      backUrl: "http://3.38.96.140:8070"
+    prod:
+      cookieDomain: www.surl.oa.gg
+      frontUrl: "https://${custom.prod.cookieDomain}"
+      backUrl: "https://api.${custom.prod.cookieDomain}"
+    site:
+      name: "QUOTEME DEV"
+      cookieDomain: "${custom.dev.cookieDomain}"
+      frontUrl: "${custom.dev.frontUrl}"
+      backUrl: "${custom.dev.backUrl}"
+    accessToken:
+      expirationSec: 600
     jwt:
-      secretKey: "sdfsd2312fdfs231k7845fddsfds234adcxzcc"
+      secretKey: ${JWT_SECRET_KEY}
       accessTokenExpiration: 3600

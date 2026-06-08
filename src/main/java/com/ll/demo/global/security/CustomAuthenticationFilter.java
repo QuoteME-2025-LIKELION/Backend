@@ -9,8 +9,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +17,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -34,6 +35,13 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
             HttpServletRequest req,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
+
+        // 소셜 로그인 진입 주소 및 콜백 주소는 이 필터의 토큰 검증 로직을 건너뜀
+        String requestURI = req.getRequestURI();
+        if (requestURI.startsWith("/oauth2/") || requestURI.startsWith("/login/oauth2/")) {
+            filterChain.doFilter(req, response);
+            return;
+        }
 
         String accessToken = null;
         String refreshToken = null;

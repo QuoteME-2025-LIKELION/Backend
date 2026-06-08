@@ -3,16 +3,34 @@ package com.ll.demo.global.rsData;
 // 응답 데이터
 public class RsData<T> {
 
+    private final String resultCode;
     private final String message;
     private final T data;
 
-    private RsData(String message, T data) {
+    private RsData(String resultCode, String message, T data) {
+        this.resultCode = resultCode;
         this.message = message;
         this.data = data;
     }
 
+    // 기존 방식 지원
     public static <T> RsData<T> of(String message, T data) {
-        return new RsData<>(message, data);
+        String resultCode = "200";
+
+        if (message != null && message.length() >= 3) {
+            resultCode = message.substring(0, 3);
+        }
+
+        return new RsData<>(resultCode, message, data);
+    }
+
+    // 새 방식 추가
+    public static <T> RsData<T> of(String resultCode, String message, T data) {
+        return new RsData<>(resultCode, message, data);
+    }
+
+    public String getResultCode() {
+        return resultCode;
     }
 
     public String getMessage() {
@@ -24,17 +42,16 @@ public class RsData<T> {
     }
 
     public <U> RsData<U> newDataOf(U data) {
-        return new RsData<>(message, data);
+        return new RsData<>(resultCode, message, data);
     }
 
     public int getStatusCode() {
-        if (message == null || message.isEmpty()) {
-            return 200; // 제발 성공
+        if (resultCode == null || resultCode.isEmpty()) {
+            return 200;
         }
 
         try {
-            String codeStr = message.substring(0, 3);
-            return Integer.parseInt(codeStr);
+            return Integer.parseInt(resultCode.substring(0, 3));
         } catch (Exception e) {
             return 200;
         }

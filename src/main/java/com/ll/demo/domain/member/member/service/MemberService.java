@@ -19,6 +19,9 @@ import com.ll.demo.domain.member.member.type.MemberProvider;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
 import com.ll.demo.domain.quote.entity.QuoteTag;
+import com.ll.demo.domain.notice.entity.Notice;
+import com.ll.demo.domain.notice.entity.NoticeType;
+import com.ll.demo.domain.notice.repository.NoticeRepository;
 import com.ll.demo.domain.quote.repository.QuoteLikeRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
 import com.ll.demo.domain.quote.repository.QuoteTagRepository;
@@ -56,6 +59,7 @@ public class MemberService {
     private final QuoteLikeRepository quoteLikeRepository;
     private final QuoteTagRepository quoteTagRepository;
     private final QuoteTagRequestRepository quoteTagRequestRepository;
+    private final NoticeRepository noticeRepository;
 
     // 이메일로 회원 조회
     @Transactional(readOnly = true)
@@ -280,6 +284,12 @@ public void updateProfile(Long memberId, ProfileUpdateRequest request, String im
                     memberRepository.save(guest);
 
                     setupGuestDemoData(guest);
+
+                    noticeRepository.save(Notice.builder()
+                            .type(NoticeType.NOTICE)
+                            .title("앱 출시 안내")
+                            .content("QuoteMe 앱이 정식 출시되었습니다!면 좋겠다")
+                            .build());
 
                     return guest;
                 });

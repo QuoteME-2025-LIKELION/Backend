@@ -2,6 +2,7 @@ package com.ll.demo.domain.quote.controller;
 
 import com.ll.demo.domain.member.member.service.MemberService;
 import com.ll.demo.domain.quote.dto.*;
+import com.ll.demo.domain.quote.dto.QuoteSummarizeResponse;
 import com.ll.demo.domain.quote.service.QuoteService;
 import com.ll.demo.global.dto.PagedResponse;
 import com.ll.demo.global.gemini.GeminiService;
@@ -50,15 +51,14 @@ public class QuoteController {
     // AI 요약 (일기 → 명언)
     // 일기 내용 검증 후 Gemini 호출
     @PostMapping("/summarize")
-    public ResponseEntity<Map<String, String>> summarizeQuote(
+    public ResponseEntity<QuoteSummarizeResponse> summarizeQuote(
             @RequestBody AiSummaryReq req,
             @AuthenticationPrincipal SecurityUser user
     ) {
         // 일기 유효성 검사 (15자 이하 / 불량 텍스트 거부)
         quoteService.validateDiaryContent(req.content());
         memberService.checkAndIncrementAiUsage(user.getMember());
-        String summary = geminiService.summarize(req.content());
-        return ResponseEntity.ok(Map.of("summary", summary));
+        return ResponseEntity.ok(new QuoteSummarizeResponse(geminiService.summarizeThree(req.content())));
     }
 
     // AI 사용량 조회 (하루 3회 제한)

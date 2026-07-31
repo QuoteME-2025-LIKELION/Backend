@@ -63,9 +63,37 @@ Base Path: `/api/quotes`
 |-----------|-----------|--------|----------|-------------------|------|------|
 | 홈/피드 | 피드 명언 목록 조회 | `GET` | `/api/quotes` | Query: `date` (required, `yyyy-MM-dd`), `groupId` (optional) | `QuoteListDto` | groupId 없으면 전체 친구 피드, 있으면 해당 그룹 멤버 피드 |
 | 명언 작성 | 명언 작성 | `POST` | `/api/quotes` | `{ content, originalContent?, summary?, taggedMemberIds?: [Long] }` | `QuoteResponse` | HTTP 201 |
-| 명언 작성 | AI 요약 (일기→명언) | `POST` | `/api/quotes/summarize` | `{ content }` | `{ "summary": String }` | 하루 3회 제한 |
+| 명언 작성 | AI 요약 (일기→명언) | `POST` | `/api/quotes/summarize` | `{ content }` | `{ "summaries": [String] }` | 하루 3회 제한 |
 | 명언 작성 | AI 사용량 조회 | `GET` | `/api/quotes/ai-usage` | 없음 | `{ "usedCount": Long, "maxCount": Long, ... }` | 오늘 AI 사용 횟수 조회 |
 | 피드 | 좋아요 등록 | `POST` | `/api/quotes/{quoteId}/like` | Path: `quoteId` | 없음 (204) | |
+
+#### AI 요약 요청 예시
+```json
+{ "content": "오늘은 길고 피곤한 하루였지만, 결국 작은 성취들이 모여 나를 앞으로 나아가게 했다." }
+```
+
+#### AI 요약 응답 예시
+```json
+{ "summaries": ["작은 성취가 나를 앞으로 나아가게 한다.", "피곤함 속에서도 한 걸음씩 나아가는 것이 진짜 변화다.", "하루의 끝에 남는 것은 포기하지 않은 나의 발자국이다."] }
+```
+
+#### 에러 응답 예시
+- `429 Too Many Requests` (일일 제한 초과)
+```json
+{
+  "resultCode": "429-1",
+  "msg": "AI 추천은 하루 3회까지만 사용할 수 있습니다.",
+  "data": {}
+}
+```
+- `400 Bad Request` (잘못된 입력/요청)
+```json
+{
+  "resultCode": "400-1",
+  "msg": "내용을 입력해주세요.",
+  "data": {}
+}
+```
 | 피드 | 좋아요 취소 | `DELETE` | `/api/quotes/{quoteId}/like` | Path: `quoteId` | 없음 (204) | |
 | 피드 | 북마크 추가 | `POST` | `/api/quotes/{quoteId}/bookmark` | Path: `quoteId` | `{ resultCode, data }` | HTTP 201 |
 | 피드 | 북마크 취소 | `DELETE` | `/api/quotes/{quoteId}/bookmark` | Path: `quoteId` | `{ resultCode, data }` | |

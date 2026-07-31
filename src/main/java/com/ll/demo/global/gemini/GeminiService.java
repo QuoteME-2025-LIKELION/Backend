@@ -1,12 +1,17 @@
 package com.ll.demo.global.gemini;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class GeminiService {
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final Client client;
 
@@ -43,6 +48,28 @@ public class GeminiService {
         } catch (Exception e) {
             e.printStackTrace(); // 에러 로그 출력
             return "AI 요약을 이용할 수 없습니다.";
+        }
+    }
+
+    public List<String> summarizeThree(String originalText) {
+        String prompt = """
+                사용자의 글을 분석해서 어울리는 명언 3개를 생성해.
+                응답은 반드시 다른 설명 없이 [\"명언1\", \"명언2\", \"명언3\"] 형태의 JSON 배열만 출력해.
+
+                입력 내용:
+                """ + originalText;
+
+        try {
+            GenerateContentResponse response = client.models.generateContent(
+                    "gemini-2.5-flash",
+                    prompt,
+                    null
+            );
+
+            return objectMapper.readValue(response.text(), new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
         }
     }
 }

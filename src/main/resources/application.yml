@@ -19,7 +19,7 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: "http://ec2-3-38-96-140.ap-northeast-2.compute.amazonaws.com:8070/login/oauth2/code/google"
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope:
               - profile
               - email
@@ -28,7 +28,7 @@ spring:
             client-secret: ${KAKAO_CLIENT_SECRET}
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
-            redirect-uri: "http://ec2-3-38-96-140.ap-northeast-2.compute.amazonaws.com:8070/login/oauth2/code/kakao"
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope:
               - profile_nickname
               - account_email
@@ -71,22 +71,26 @@ logging:
     org.hibernate.orm.jdbc.bind: TRACE
     org.hibernate.orm.jdbc.extract: TRACE
     org.springframework.transaction.interceptor: TRACE
-  custom:
-    dev:
-      cookieDomain: "3.38.96.140"
-      frontUrl: "http://localhost:5173"
-      backUrl: "http://3.38.96.140:8070"
-    prod:
-      cookieDomain: www.surl.oa.gg
-      frontUrl: "https://${custom.prod.cookieDomain}"
-      backUrl: "https://api.${custom.prod.cookieDomain}"
-    site:
-      name: "QUOTEME DEV"
-      cookieDomain: "${custom.dev.cookieDomain}"
-      frontUrl: "${custom.dev.frontUrl}"
-      backUrl: "${custom.dev.backUrl}"
-    accessToken:
-      expirationSec: 600
-    jwt:
-      secretKey: ${JWT_SECRET_KEY}
-      accessTokenExpiration: 3600
+custom:
+  oauth2:
+    redirect-base: ${CUSTOM_OAUTH2_REDIRECT_BASE:http://localhost:8080}
+  dev:
+    cookieDomain: "3.38.96.140"
+    frontUrl: "http://localhost:5173"
+    backUrl: "http://3.38.96.140:8070"
+  prod:
+    cookieDomain: www.surl.oa.gg
+    frontUrl: "https://${custom.prod.cookieDomain}"
+    backUrl: "https://api.${custom.prod.cookieDomain}"
+  site:
+    name: "QUOTEME DEV"
+    cookieDomain: "${custom.dev.cookieDomain}"
+    frontUrl: "${custom.dev.frontUrl}"
+    backUrl: "${custom.dev.backUrl}"
+  frontend:
+    allowed-origins: ${CUSTOM_FRONTEND_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  accessToken:
+    expirationSec: 600
+  jwt:
+    secretKey: ${JWT_SECRET_KEY}
+    accessTokenExpiration: 3600

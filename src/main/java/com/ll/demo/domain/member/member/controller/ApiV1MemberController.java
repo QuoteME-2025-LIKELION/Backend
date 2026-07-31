@@ -156,7 +156,7 @@ public class ApiV1MemberController {
 
     // 다른 회원 프로필
     @RestController
-    @RequestMapping("/api/profile") // 에러가 났던 주소와 맞춥니다.
+    @RequestMapping("/api/profile") // 에러가 났던 주소
     @RequiredArgsConstructor
     public class MemberController {
 

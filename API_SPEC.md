@@ -179,6 +179,8 @@ Base Path: `/api/groups`
 | 그룹 상세 | 그룹 좌우명 수정 | `PATCH` | `/api/groups/{groupId}/motto` | Path: `groupId`, Body: `{ motto (max 20자) }` | `{ resultCode }` | 그룹장만 가능 |
 | 그룹 상세 | 그룹 멤버 강제 탈퇴 / 본인 탈퇴 | `DELETE` | `/api/groups/{groupId}/members/{memberId}` | Path: `groupId`, `memberId` | `{ resultCode }` | 그룹장은 강제 퇴장, 본인은 탈퇴 |
 | 그룹 초대 | 친구 그룹 초대 | `POST` | `/api/groups/{groupId}/invite/{friendId}` | Path: `groupId`, `friendId` | `{ resultCode }` | |
+| 그룹 관리 | 특정 그룹의 보낸 초대 대기 목록 조회 | `GET` | `/api/groups/{groupId}/invitations/sent` | Path: `groupId` | `List<GroupJoinRequestResponse>` | 그룹장 전용, PENDING 초대만 조회 |
+| 그룹 관리 | 보낸 초대 취소 | `DELETE` | `/api/groups/{groupId}/invitations/{requestId}` | Path: `groupId`, `requestId` | `{ resultCode }` | 그룹장 전용, PENDING 초대만 취소 |
 | 그룹 가입 | 그룹 가입 요청 | `POST` | `/api/groups/{groupId}/join-request` | Path: `groupId` | `{ resultCode }` | |
 | 그룹 관리 | 가입 요청 목록 조회 | `GET` | `/api/groups/{groupId}/join-requests` | Path: `groupId` | `List<GroupJoinRequestResponse>` | 그룹장 전용 |
 | 알림 | 가입 요청 수락 | `POST` | `/api/groups/join-requests/{requestId}/accept` | Path: `requestId` | `{ resultCode }` | |

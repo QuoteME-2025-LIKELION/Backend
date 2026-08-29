@@ -15,6 +15,13 @@ public class GroupJoinRequest extends BaseTime {
     @JoinColumn(name = "group_id")
     private Group group;
 
+    // 기존 DB 호환성을 위해 nullable 유지.
+    // 신규 생성 초대는 반드시 inviter를 저장하고,
+    // 기존 데이터는 별도 backfill 로 보완한다.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inviter_id", nullable = true)
+    private Member inviter;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requester_id")
     private Member requester;

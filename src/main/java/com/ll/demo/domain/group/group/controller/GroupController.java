@@ -49,6 +49,26 @@ public class GroupController {
         return ResponseEntity.ok(RsData.of("200", "초대가 완료되었습니다."));
     }
 
+    // 내가 특정 그룹에 보낸 초대 대기 목록 조회 (그룹장 전용)
+    @GetMapping("/{groupId}/invitations/sent")
+    public ResponseEntity<List<GroupJoinRequestResponse>> getSentInvitations(
+            @AuthenticationPrincipal SecurityUser user,
+            @PathVariable Long groupId
+    ) {
+        return ResponseEntity.ok(groupService.getSentInvitations(user.getMember(), groupId));
+    }
+
+    // 특정 그룹에서 보낸 초대 취소 (그룹장 전용)
+    @DeleteMapping("/{groupId}/invitations/{requestId}")
+    public ResponseEntity<RsData<String>> cancelInvitation(
+            @AuthenticationPrincipal SecurityUser user,
+            @PathVariable Long groupId,
+            @PathVariable Long requestId
+    ) {
+        groupService.cancelInvitation(user.getMember(), groupId, requestId);
+        return ResponseEntity.ok(RsData.of("200", "그룹 초대를 취소했습니다."));
+    }
+
     // 그룹 멤버 삭제 / 탈퇴
     @DeleteMapping("/{groupId}/members/{memberId}")
     public ResponseEntity<RsData<String>> removeOrLeave(

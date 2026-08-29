@@ -6,6 +6,10 @@ import com.ll.demo.domain.group.group.entity.InviteType;
 import com.ll.demo.domain.group.group.entity.JoinStatus;
 import com.ll.demo.domain.member.member.entity.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -23,4 +27,10 @@ public interface GroupJoinRequestRepository extends JpaRepository<GroupJoinReque
 
     // 그룹의 대기 중인 가입 요청 목록 (리더 확인용)
     List<GroupJoinRequest> findAllByGroupAndStatusAndType(Group group, JoinStatus status, InviteType type);
+
+    // 특정 그룹에서 특정 그룹장이 보낸 대기 중인 초대 목록
+    List<GroupJoinRequest> findAllByGroupAndInviterAndStatusAndType(Group group, Member inviter, JoinStatus status, InviteType type);
+
+    // 특정 초대의 groupId + inviter + status + type 검증
+    Optional<GroupJoinRequest> findByIdAndGroupAndInviterAndStatusAndType(Long id, Group group, Member inviter, JoinStatus status, InviteType type);
 }

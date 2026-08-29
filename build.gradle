@@ -63,7 +63,6 @@ dependencies {
 //}
 
 tasks.named('test') {
-    // 테스트 실행을 건너뛰고 빌드를 계속 진행하도록 설정
-    enabled = false
+    useJUnitPlatform()
 }
 

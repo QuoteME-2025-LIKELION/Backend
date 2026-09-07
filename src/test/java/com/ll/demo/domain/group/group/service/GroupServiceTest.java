@@ -1,5 +1,8 @@
 package com.ll.demo.domain.group.group.service;
 
+import com.ll.demo.domain.friendship.friendship.entity.Friendship;
+import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
+import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
 import com.ll.demo.domain.group.group.dto.GroupJoinRequestResponse;
 import com.ll.demo.domain.group.group.entity.Group;
 import com.ll.demo.domain.group.group.entity.GroupJoinRequest;
@@ -42,6 +45,9 @@ class GroupServiceTest {
 
     @Autowired
     private MemberRepository memberRepository;
+
+    @Autowired
+    private FriendshipRepository friendshipRepository;
 
     private Member leader;
     private Member invitee1;
@@ -114,6 +120,12 @@ class GroupServiceTest {
 
     @Test
     void inviteFriend_setsInviterOnNewInvite() {
+        friendshipRepository.save(Friendship.builder()
+                .member(leader)
+                .friend(invitee1)
+                .status(FriendshipStatus.ACCEPTED)
+                .build());
+
         groupService.inviteFriend(leader, group.getId(), invitee1.getId());
 
         GroupJoinRequest saved = groupJoinRequestRepository.findAll().stream()
@@ -172,7 +184,7 @@ class GroupServiceTest {
     }
 
     @Test
-    void legacyInviteWithoutInviter_isBackfilledAndStillWorks() {
+    void legacyInviteWithoutInviter_remainsNullableAndDoesNotAutoBackfill() {
         GroupJoinRequest legacy = groupJoinRequestRepository.save(
                 GroupJoinRequest.builder().group(group).requester(invitee2).status(JoinStatus.PENDING).type(InviteType.INVITE).build());
 
@@ -180,11 +192,10 @@ class GroupServiceTest {
 
         assertThat(groupService.getSentInvitations(leader, group.getId()))
                 .extracting(GroupJoinRequestResponse::requestId)
-                .contains(legacy.getId());
+                .doesNotContain(legacy.getId());
 
         GroupJoinRequest persisted = groupJoinRequestRepository.findById(legacy.getId()).orElseThrow();
-        assertThat(persisted.getInviter()).isNotNull();
-        assertThat(persisted.getInviter().getId()).isEqualTo(leader.getId());
+        assertThat(persisted.getInviter()).isNull();
     }
 }
 

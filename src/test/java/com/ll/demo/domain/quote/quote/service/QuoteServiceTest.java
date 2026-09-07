@@ -196,8 +196,6 @@ class QuoteServiceTest {
                         .status(com.ll.demo.domain.friendship.friendship.type.FriendshipStatus.ACCEPTED)
                         .build()
         ));
-        when(groupMemberRepository.findByMember(sender)).thenReturn(List.of()); // 그룹 없음 처리
-        when(bookmarkRepository.existsByMemberAndQuote(sender, myQuote)).thenReturn(false);
         when(bookmarkRepository.existsByMemberAndQuote(sender, friendQuote)).thenReturn(false);
 
         QuoteListDto result = quoteService.getQuoteList(sender, testDate, null);

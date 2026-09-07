@@ -103,8 +103,8 @@ public class GroupService {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new GlobalException("404", "그룹을 찾을 수 없습니다."));
 
-        if (!groupMemberRepository.existsByGroupAndMember(group, requester)) {
-            throw new GlobalException("403", "그룹 멤버만 친구를 초대할 수 있습니다.");
+        if (!group.getLeader().getId().equals(requester.getId())) {
+            throw new GlobalException("403", "권한이 없습니다.");
         }
 
         Member friend = memberRepository.findById(friendId)
@@ -130,6 +130,7 @@ public class GroupService {
 
         groupJoinRequestRepository.save(GroupJoinRequest.builder()
                 .group(group)
+                .inviter(requester)
                 .requester(friend)
                 .status(JoinStatus.PENDING)
                 .type(InviteType.INVITE)
@@ -153,6 +154,52 @@ public class GroupService {
                 .stream()
                 .map(GroupInviteResponse::from)
                 .toList();
+    }
+
+    // 특정 그룹에서 내가 보낸 초대 대기 목록 조회 (그룹장 전용)
+    @Transactional(readOnly = true)
+    public List<GroupJoinRequestResponse> getSentInvitations(Member leader, Long groupId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new GlobalException("404", "그룹을 찾을 수 없습니다."));
+
+        if (!group.getLeader().getId().equals(leader.getId())) {
+            throw new GlobalException("403", "권한이 없습니다.");
+        }
+
+        return groupJoinRequestRepository
+                .findAllByGroupAndInviterAndStatusAndType(group, leader, JoinStatus.PENDING, InviteType.INVITE)
+                .stream()
+                .map(GroupJoinRequestResponse::from)
+                .toList();
+    }
+
+    // 특정 그룹에서 보낸 초대 취소 (그룹장 전용)
+    @Transactional
+    public void cancelInvitation(Member leader, Long groupId, Long requestId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new GlobalException("404", "그룹을 찾을 수 없습니다."));
+
+        if (!group.getLeader().getId().equals(leader.getId())) {
+            throw new GlobalException("403", "권한이 없습니다.");
+        }
+
+        GroupJoinRequest req = groupJoinRequestRepository
+                .findByIdAndGroupAndInviterAndStatusAndType(requestId, group, leader, JoinStatus.PENDING, InviteType.INVITE)
+                .orElseThrow(() -> new GlobalException("404", "초대를 찾을 수 없습니다."));
+
+        if (!req.getGroup().getId().equals(groupId)) {
+            throw new GlobalException("403", "권한이 없습니다.");
+        }
+
+        req.reject();
+
+        notificationService.create(
+                req.getRequester(),
+                leader,
+                "GROUP_REJECT",
+                leader.getNickname() + "님이 '" + group.getName() + "' 그룹 초대를 취소했습니다.",
+                group.getId()
+        );
     }
 
     // 그룹 초대 수락

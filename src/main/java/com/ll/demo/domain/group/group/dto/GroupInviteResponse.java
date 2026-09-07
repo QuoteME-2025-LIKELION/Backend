@@ -10,12 +10,16 @@ public record GroupInviteResponse(
         String inviterNickname
 ) {
     public static GroupInviteResponse from(GroupJoinRequest req) {
+        String inviterNickname = req.getInviter() != null
+                ? req.getInviter().getNickname()
+                : req.getGroup().getLeader().getNickname();
+
         return new GroupInviteResponse(
                 req.getId(),
                 req.getGroup().getId(),
                 req.getGroup().getName(),
                 req.getGroup().getMotto(),
-                req.getGroup().getLeader().getNickname()
+                inviterNickname
         );
     }
 }

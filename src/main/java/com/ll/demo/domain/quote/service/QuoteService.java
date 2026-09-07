@@ -28,6 +28,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 @Service
@@ -229,7 +231,22 @@ public class QuoteService {
                 })
                 .toList();
 
-        return new QuoteListDto(myQuotes, otherQuotes);
+        // compute unwritten members only when groupId is provided
+        List<UnwrittenMemberResponse> unwrittenMembers = Collections.emptyList();
+        if (groupId != null) {
+            // authors who have at least one quote in the date range
+            Set<Long> authorsWithQuote = quotes.stream()
+                .map(q -> q.getAuthor().getId())
+                .collect(Collectors.toSet());
+
+            unwrittenMembers = targetMembers.stream()
+                .filter(m -> !authorsWithQuote.contains(m.getId()))
+                .filter(m -> !m.getId().equals(currentUser.getId()))
+                .map(m -> new com.ll.demo.domain.quote.dto.UnwrittenMemberResponse(m.getId(), m.getNickname(), m.getProfileImage()))
+                .toList();
+        }
+
+        return new QuoteListDto(myQuotes, otherQuotes, unwrittenMembers);
     }
 
     private String getQuoteGroupName(Quote quote) {
@@ -476,7 +493,7 @@ public class QuoteService {
             return PagedResponse.empty("친구를 추가하면 매일 피드에서 명언을 확인할 수 있어요");
         }
 
-        List<Quote> quotes = quoteRepository.findFeedQuotes(friendIds, date);
+        List<Quote> quotes = quoteRepository.findFeedQuotes(friendIds, date, groupId);
 
         if (quotes.isEmpty()) {
             return PagedResponse.empty("아직 아무도 명언을 작성하지 않았어요");

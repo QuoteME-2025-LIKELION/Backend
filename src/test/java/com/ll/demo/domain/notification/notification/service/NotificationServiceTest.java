@@ -50,16 +50,18 @@ class NotificationServiceTest {
     void findMyNotifications_DataIntegrity() {
         // given
         Notification pokeNote = Notification.builder()
-                .type("POKE").targetId(2L).receiver(receiver).sender(sender).message("콕!").build(); // targetId: 발신자 ID
+                .type("POKE").targetId(2L).receiver(receiver).sender(sender).message("콕!").build();
+        ReflectionTestUtils.setField(pokeNote, "createDate", java.time.LocalDateTime.now());
 
         Notification likeNote = Notification.builder()
-                .type("LIKE").targetId(100L).receiver(receiver).sender(sender).message("좋아요!").build(); // targetId: 글 ID
+                .type("LIKE").targetId(100L).receiver(receiver).sender(sender).message("좋아요!").build();
+        ReflectionTestUtils.setField(likeNote, "createDate", java.time.LocalDateTime.now());
 
         when(notificationRepository.findByReceiverIdOrderByCreateDateDesc(1L))
                 .thenReturn(List.of(pokeNote, likeNote));
 
         // when
-        List<NotificationResponse> result = notificationService.findMyNotifications(1L);
+        List<NotificationResponse> result = notificationService.findMyNotifications(1L, null);
 
         // then
         assertThat(result.get(0).type()).isEqualTo("POKE");
@@ -74,8 +76,9 @@ class NotificationServiceTest {
     void markAsRead_Success() {
         // given
         Notification note;
-        note = Notification.builder().receiver(receiver).build();
+        note = Notification.builder().receiver(receiver).sender(sender).type("POKE").message("콕!").targetId(2L).build();
         ReflectionTestUtils.setField(note, "id", 50L);
+        ReflectionTestUtils.setField(note, "createDate", java.time.LocalDateTime.now());
 
         when(notificationRepository.findById(50L)).thenReturn(Optional.of(note));
 
@@ -97,14 +100,23 @@ class NotificationServiceTest {
         Long memberId = 1L;
         String type = "POKE";
 
-        Notification mockNotification = mock(Notification.class);
+        Notification realNotification = Notification.builder()
+                .receiver(receiver)
+                .sender(sender)
+                .type(type)
+                .message("콕!")
+                .targetId(2L)
+                .build();
+        ReflectionTestUtils.setField(realNotification, "createDate", java.time.LocalDateTime.now());
+
         when(notificationRepository.findByReceiverIdAndTypeOrderByCreateDateDesc(eq(memberId), eq(type)))
-                .thenReturn(List.of(mockNotification));
+                .thenReturn(List.of(realNotification));
 
         List<NotificationResponse> result = notificationService.findMyNotifications(memberId, type);
 
         verify(notificationRepository, times(1)).findByReceiverIdAndTypeOrderByCreateDateDesc(memberId, type);
         assertThat(result).hasSize(1);
+        assertThat(result.get(0).senderName()).isEqualTo("발신자");
     }
 
     @Test
@@ -116,12 +128,17 @@ class NotificationServiceTest {
         Member receiver = Member.builder().build();
         ReflectionTestUtils.setField(receiver, "id", receiverId);
 
+        Member sender = Member.builder().nickname("발신자").build();
+        ReflectionTestUtils.setField(sender, "id", 99L);
+
         Notification notification = Notification.builder()
                 .receiver(receiver)
+                .sender(sender)
                 .type("TAG_ACCEPTED")
                 .message("a님이 태그 요청을 수락했습니다!")
                 .build();
         ReflectionTestUtils.setField(notification, "id", notificationId);
+        ReflectionTestUtils.setField(notification, "createDate", java.time.LocalDateTime.now());
 
         when(notificationRepository.findById(notificationId)).thenReturn(Optional.of(notification));
 

@@ -61,7 +61,7 @@ Base Path: `/api/quotes`
 
 | UI 페이지 | 세부 기능 | 메소드 | API Path | 요청 파라미터/Body | 응답 | 참고 |
 |-----------|-----------|--------|----------|-------------------|------|------|
-| 홈/피드 | 피드 명언 목록 조회 | `GET` | `/api/quotes` | Query: `date` (required, `yyyy-MM-dd`), `groupId` (optional) | `QuoteListDto` | groupId 없으면 전체 친구 피드, 있으면 해당 그룹 멤버 피드 |
+| 홈/피드 | 피드 명언 목록 조회 | `GET` | `/api/quotes` | Query: `date` (required, `yyyy-MM-dd`), `groupId` (optional) | `QuoteListDto` | groupId 없으면 전체 친구 피드, 있으면 해당 그룹 멤버 피드; `unwrittenMembers` 필드 추가 |
 | 명언 작성 | 명언 작성 | `POST` | `/api/quotes` | `{ content, originalContent?, summary?, taggedMemberIds?: [Long] }` | `QuoteResponse` | HTTP 201 |
 | 명언 작성 | AI 요약 (일기→명언) | `POST` | `/api/quotes/summarize` | `{ content }` | `{ "summaries": [String] }` | 하루 3회 제한 |
 | 명언 작성 | AI 사용량 조회 | `GET` | `/api/quotes/ai-usage` | 없음 | `{ "usedCount": Long, "maxCount": Long, ... }` | 오늘 AI 사용 횟수 조회 |

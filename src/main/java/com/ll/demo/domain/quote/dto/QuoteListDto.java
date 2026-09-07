@@ -4,5 +4,6 @@ import java.util.List;
 
 public record QuoteListDto(
         List<MyQuoteResponse> myQuotes,
-        List<QuoteDetailResponse> otherQuotes
+        List<QuoteDetailResponse> otherQuotes,
+        List<UnwrittenMemberResponse> unwrittenMembers
 ) {}

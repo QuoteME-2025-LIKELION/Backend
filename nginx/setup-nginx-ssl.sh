@@ -14,22 +14,44 @@ sudo apt-get update -y
 sudo apt-get install -y nginx certbot python3-certbot-nginx
 
 echo "=== [2/4] Nginx 설정 파일 복사 ==="
-sudo cp "$CONF_SRC" /etc/nginx/sites-available/${DOMAIN}.conf
+sudo mkdir -p /var/www/certbot
+
+# 인증서가 아직 없으므로 먼저 HTTP 전용 설정으로 Nginx를 기동합니다.
+sudo tee /etc/nginx/sites-available/${DOMAIN}.conf > /dev/null <<EOF
+server {
+  listen 80;
+  server_name ${DOMAIN};
+
+  location /.well-known/acme-challenge/ {
+    root /var/www/certbot;
+  }
+
+  location / {
+    return 404;
+  }
+}
+EOF
 sudo ln -sf /etc/nginx/sites-available/${DOMAIN}.conf /etc/nginx/sites-enabled/${DOMAIN}.conf
 
 # default 사이트 비활성화 (충돌 방지)
 sudo rm -f /etc/nginx/sites-enabled/default
 
 sudo nginx -t
-sudo systemctl reload nginx
+sudo systemctl restart nginx
 
 echo "=== [3/4] Let's Encrypt 인증서 발급 ==="
-sudo certbot --nginx \
+sudo certbot certonly --webroot \
+  --webroot-path /var/www/certbot \
   -d "$DOMAIN" \
   --non-interactive \
   --agree-tos \
   --email "$EMAIL" \
-  --redirect
+  --keep-until-expiring
+
+# 인증서 발급 후 443 SSL + 80 리다이렉트 설정으로 교체합니다.
+sudo cp "$CONF_SRC" /etc/nginx/sites-available/${DOMAIN}.conf
+sudo nginx -t
+sudo systemctl reload nginx
 
 echo "=== [4/4] 자동 갱신 확인 ==="
 sudo systemctl enable certbot.timer

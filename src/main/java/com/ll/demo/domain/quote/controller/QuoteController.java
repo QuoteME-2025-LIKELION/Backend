@@ -8,7 +8,6 @@ import com.ll.demo.global.dto.PagedResponse;
 import com.ll.demo.global.gemini.GeminiService;
 import com.ll.demo.global.rsData.RsData;
 import com.ll.demo.global.security.SecurityUser;
-import com.ll.demo.standard.rq.Rq;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -29,7 +28,6 @@ public class QuoteController {
     private final GeminiService geminiService;
     private final QuoteService quoteService;
     private final MemberService memberService;
-    private final Rq rq;
 
     // 명언 작성
     @PostMapping
@@ -195,10 +193,14 @@ public class QuoteController {
 
     @GetMapping("/feed")
     public RsData<PagedResponse<QuoteDetailResponse>> getFeed(
+            @AuthenticationPrincipal SecurityUser securityUser,
             @RequestParam LocalDate date,
             @RequestParam(required = false) Long groupId
     ) {
-        Long memberId = rq.getMember().getId();
+        if (securityUser == null) {
+            throw new RuntimeException("로그인이 필요합니다.");
+        }
+        Long memberId = securityUser.getMember().getId();
         PagedResponse<QuoteDetailResponse> response = quoteService.getFeed(memberId, date, groupId);
         return RsData.of("200-1", response);
     }

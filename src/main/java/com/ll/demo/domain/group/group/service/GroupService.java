@@ -19,6 +19,8 @@ import com.ll.demo.domain.group.group.repository.GroupJoinRequestRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
 import com.ll.demo.global.exceptions.GlobalException;
+import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -110,7 +112,7 @@ public class GroupService {
         Member friend = memberRepository.findById(friendId)
                 .orElseThrow(() -> new GlobalException("404", "초대할 회원을 찾을 수 없습니다."));
 
-        if (!friendshipRepository.existsByMemberAndFriend(requester, friend)) {
+        if (!friendshipRepository.existsByMemberAndFriendAndStatus(requester, friend, FriendshipStatus.ACCEPTED)) {
             throw new GlobalException("400-2", "친구 관계인 회원만 초대할 수 있습니다.");
         }
 

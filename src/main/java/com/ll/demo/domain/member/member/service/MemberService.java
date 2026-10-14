@@ -193,7 +193,7 @@ public void updateProfile(Long memberId, ProfileUpdateRequest request, String im
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
 
-        List<Friendship> friendships = friendshipRepository.findAllByMember(member);
+        List<Friendship> friendships = friendshipRepository.findAllByMemberAndStatus(member, FriendshipStatus.ACCEPTED);
 
         return friendships.stream()
                 .map(friendship -> {

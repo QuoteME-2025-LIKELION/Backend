@@ -29,12 +29,12 @@ public class FriendshipController {
         return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-1", "친구 요청을 보냈습니다."));
     }
 
-    // 받은 친구 요청 목록 조회
+    // 친구 요청 목록 조회 (받은 요청 + 보낸 요청)
     @GetMapping("/requests")
-    public ResponseEntity<List<FriendRequestResponse>> getReceivedRequests(
+    public ResponseEntity<List<FriendRequestResponse>> getFriendRequests(
             @AuthenticationPrincipal SecurityUser user
     ) {
-        return ResponseEntity.ok(friendshipService.getReceivedRequests(user.getMember()));
+        return ResponseEntity.ok(friendshipService.getFriendRequests(user.getMember()));
     }
 
     // 친구 요청 수락

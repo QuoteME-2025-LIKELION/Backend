@@ -189,7 +189,7 @@ class QuoteServiceTest {
 
         when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of(myQuote, friendQuote));
         when(quoteLikeRepository.existsByQuoteAndMember(friendQuote, sender)).thenReturn(true);
-        when(friendshipRepository.findAllByMember(sender)).thenReturn(List.of(
+        when(friendshipRepository.findAllByMemberAndStatus(sender, com.ll.demo.domain.friendship.friendship.type.FriendshipStatus.ACCEPTED)).thenReturn(List.of(
                 com.ll.demo.domain.friendship.friendship.entity.Friendship.builder()
                         .member(sender)
                         .friend(friend)

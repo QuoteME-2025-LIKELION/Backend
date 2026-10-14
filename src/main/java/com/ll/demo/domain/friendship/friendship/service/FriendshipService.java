@@ -7,6 +7,8 @@ import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
+import com.ll.demo.domain.friendship.friendship.type.FriendRequestDirection;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -54,12 +57,17 @@ public class FriendshipService {
         );
     }
 
-    // 받은 친구 요청 목록 조회
-    public List<FriendRequestResponse> getReceivedRequests(Member member) {
-        return friendshipRepository.findByFriendAndStatus(member, FriendshipStatus.REQUESTED)
+    // 친구 요청 목록 조회 (받은 요청 + 보낸 요청)
+    public List<FriendRequestResponse> getFriendRequests(Member member) {
+        Stream<FriendRequestResponse> received = friendshipRepository
+                .findByFriendAndStatus(member, FriendshipStatus.REQUESTED)
                 .stream()
-                .map(FriendRequestResponse::from)
-                .toList();
+                .map(f -> FriendRequestResponse.from(f, FriendRequestDirection.RECEIVED));
+        Stream<FriendRequestResponse> sent = friendshipRepository
+                .findAllByMemberAndStatus(member, FriendshipStatus.REQUESTED)
+                .stream()
+                .map(f -> FriendRequestResponse.from(f, FriendRequestDirection.SENT));
+        return Stream.concat(received, sent).toList();
     }
 
     // 친구 요청 수락

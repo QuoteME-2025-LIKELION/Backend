@@ -8,6 +8,8 @@ import com.ll.demo.domain.profile.profile.dto.AccountInfoResponse;
 import com.ll.demo.domain.profile.profile.dto.ProfileResponse;
 import com.ll.demo.domain.profile.profile.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.profile.profile.dto.AccountUpdateRequest;
+import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +26,7 @@ public class ProfileService {
     @Transactional(readOnly = true)
     public ProfileResponse getMyProfile(Member member) {
         long quoteCount = quoteRepository.countByAuthor(member);
-        long friendCount = friendshipRepository.countByMember(member);
+        long friendCount = friendshipRepository.countByMemberAndStatus(member, FriendshipStatus.ACCEPTED);
         return ProfileResponse.from(member, quoteCount, friendCount);
     }
 

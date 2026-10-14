@@ -138,6 +138,18 @@ class GroupServiceTest {
     }
 
     @Test
+    void inviteFriend_rejectsWhenFriendRequestIsStillPending() {
+        friendshipRepository.save(Friendship.builder()
+                .member(leader)
+                .friend(invitee1)
+                .status(FriendshipStatus.REQUESTED)
+                .build());
+
+        assertThrows(GlobalException.class,
+                () -> groupService.inviteFriend(leader, group.getId(), invitee1.getId()));
+    }
+
+    @Test
     void getSentInvitations_returnsOnlyPendingForCurrentLeader() {
         GroupJoinRequest pending1 = groupJoinRequestRepository.save(
                 GroupJoinRequest.builder().group(group).inviter(leader).requester(invitee1).status(JoinStatus.PENDING).type(InviteType.INVITE).build());

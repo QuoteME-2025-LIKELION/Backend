@@ -15,6 +15,7 @@ import com.ll.demo.domain.quote.repository.*;
 import com.ll.demo.global.dto.PagedResponse;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.security.SecurityUser;
+import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -213,7 +214,7 @@ public class QuoteService {
                     .filter(m -> !m.getId().equals(currentUser.getId()))
                     .toList();
         } else {
-            targetMembers = friendshipRepository.findAllByMember(currentUser).stream()
+            targetMembers = friendshipRepository.findAllByMemberAndStatus(currentUser, FriendshipStatus.ACCEPTED).stream()
                     .map(Friendship::getFriend)
                     .toList();
         }

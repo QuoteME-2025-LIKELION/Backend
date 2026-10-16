@@ -17,8 +17,7 @@ public record QuoteDetailResponse(
         boolean isLiked,
         boolean isBookmarked,
         boolean isFriendQuote
-) {
-    public static QuoteDetailResponse from(
+) { public static QuoteDetailResponse from(
             Quote quote,
             List<String> taggedNicknames,
             boolean isLiked,
@@ -28,9 +27,13 @@ public record QuoteDetailResponse(
         Duration duration = Duration.between(quote.getCreateDate(), LocalDateTime.now());
         String timeAgo = formatDuration(duration);
 
+        String content = (quote.getSummary() != null && !quote.getSummary().isBlank())
+                ? quote.getSummary()
+                : quote.getContent();
+
         return new QuoteDetailResponse(
                 quote.getId(),
-                quote.getSummary(),
+                content,
                 taggedNicknames,
                 quote.getAuthor().getNickname(),
                 quote.getAuthor().getBirthYear(),

@@ -11,14 +11,14 @@ public record MyQuoteResponse(
         String birthYear,
         List<String> taggedNicknames
 ) {
-    public static MyQuoteResponse from(Quote quote, String groupName) {
+        public static MyQuoteResponse from(Quote quote, String groupName) {
         String content = (quote.getSummary() != null && !quote.getSummary().isBlank())
                 ? quote.getSummary()
                 : quote.getContent();
 
         return new MyQuoteResponse(
                 quote.getId(),
-                quote.getSummary(), // ai 요약 데이터만 summary로 교체
+                content,
                 groupName,
                 quote.getAuthor().getNickname(),
                 quote.getAuthor().getBirthYear(),

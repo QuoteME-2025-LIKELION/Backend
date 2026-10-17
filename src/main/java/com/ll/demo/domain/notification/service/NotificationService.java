@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +38,7 @@ public class NotificationService {
             case "TAG", "TAG_REQUEST", "TAG_ACCEPTED" -> setting.isTagEnabled();
             case "POKE" -> setting.isPokeEnabled();
             case "LIKE" -> setting.isLikeEnabled();
+            case "QUOTE_REMINDER" -> setting.isQuoteReminderEnabled();
             case "FRIEND_REQUEST", "FRIEND_ACCEPTED", "FRIEND_REJECTED" -> setting.isFriendEnabled();
             default -> true;
         };
@@ -116,6 +119,10 @@ public class NotificationService {
         NotificationSetting setting = notificationSettingRepository.findByMember(member)
                 .orElse(NotificationSetting.builder().member(member).build());
 
+        LocalDateTime now = LocalDateTime.now(NotificationSetting.REMINDER_ZONE);
+        LocalTime previousReminderTime = setting.effectiveQuoteReminderTime();
+        boolean wasReminderEnabled = setting.isQuoteReminderEnabled();
+
         setting.setGroupEnabled(req.groupEnabled());
         setting.setFriendEnabled(req.friendEnabled());
         setting.setTagEnabled(req.tagEnabled());
@@ -123,6 +130,17 @@ public class NotificationService {
         setting.setLikeEnabled(req.likeEnabled());
         setting.setQuoteReminderEnabled(req.quoteReminderEnabled());
         setting.setMarketingEnabled(req.marketingEnabled());
+
+        if (req.quoteReminderTime() != null) {
+            setting.setQuoteReminderTime(req.quoteReminderTime());
+        }
+
+        LocalTime reminderTime = setting.effectiveQuoteReminderTime();
+        boolean timeChanged = !previousReminderTime.equals(reminderTime);
+        boolean reEnabled = !wasReminderEnabled && setting.isQuoteReminderEnabled();
+        if ((timeChanged || reEnabled) && !reminderTime.isAfter(now.toLocalTime())) {
+            setting.setLastQuoteReminderDate(now.toLocalDate());
+        }
 
         notificationSettingRepository.save(setting);
         return NotificationSettingResponse.from(setting);

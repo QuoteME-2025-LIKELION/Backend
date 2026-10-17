@@ -18,7 +18,7 @@ public record NotificationResponse(
                 n.getType(),
                 n.getMessage(),
                 n.getTargetId(),
-                n.getSender().getName(), // ★ 여기서 DB 조회가 필요함
+                n.getSender() != null ? n.getSender().getName() : null,
                 n.getCreateDate().toString(),
                 n.getReadDate() != null
         );

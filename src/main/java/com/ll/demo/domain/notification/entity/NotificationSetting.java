@@ -5,6 +5,10 @@ import com.ll.demo.global.jpa.entity.BaseTime;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+
 @Entity
 @Table(name = "notification_settings")
 @Getter
@@ -52,4 +56,17 @@ public class NotificationSetting extends BaseTime {
     @Builder.Default
     @Column(nullable = false)
     private boolean marketingEnabled = false;
+
+    public static final LocalTime DEFAULT_QUOTE_REMINDER_TIME = LocalTime.of(10, 0);
+    public static final ZoneId REMINDER_ZONE = ZoneId.of("Asia/Seoul");
+
+    @Column
+    private LocalTime quoteReminderTime;
+
+    @Column
+    private LocalDate lastQuoteReminderDate;
+
+    public LocalTime effectiveQuoteReminderTime() {
+        return quoteReminderTime != null ? quoteReminderTime : DEFAULT_QUOTE_REMINDER_TIME;
+    }
 }

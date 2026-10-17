@@ -3,22 +3,30 @@ package com.ll.demo.domain.notification.notification.service;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.notification.dto.NotificationResponse;
+import com.ll.demo.domain.notification.dto.NotificationSettingRequest;
+import com.ll.demo.domain.notification.dto.NotificationSettingResponse;
 import com.ll.demo.domain.notification.entity.Notification;
+import com.ll.demo.domain.notification.entity.NotificationSetting;
 import com.ll.demo.domain.notification.repository.NotificationRepository;
+import com.ll.demo.domain.notification.repository.NotificationSettingRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -32,6 +40,8 @@ class NotificationServiceTest {
     private NotificationService notificationService;
 
     @Mock private MemberRepository memberRepository;
+
+    @Mock private NotificationSettingRepository notificationSettingRepository;
 
     private Member receiver;
     private Member sender;
@@ -148,5 +158,98 @@ class NotificationServiceTest {
 
         NotificationResponse response = new NotificationResponse(notification);
         assertThat(response.isRead()).isTrue(); // 읽음 상태가 true?
+    }
+
+    private NotificationSettingRequest settingRequest(boolean quoteReminderEnabled, LocalTime time) {
+        return new NotificationSettingRequest(true, true, true, true, true, quoteReminderEnabled, false, time);
+    }
+
+    private LocalDate todayKst() {
+        return LocalDate.now(NotificationSetting.REMINDER_ZONE);
+    }
+
+    @Test
+    @DisplayName("성공: 설정 row가 없을 때 시간을 저장하면 저장값과 응답에 시간이 담긴다")
+    void updateSetting_newRow_savesTime() {
+        when(notificationSettingRepository.findByMember(receiver)).thenReturn(Optional.empty());
+
+        NotificationSettingResponse res = notificationService.updateSetting(receiver, settingRequest(true, LocalTime.of(21, 0)));
+
+        ArgumentCaptor<NotificationSetting> captor = ArgumentCaptor.forClass(NotificationSetting.class);
+        verify(notificationSettingRepository).save(captor.capture());
+        assertThat(captor.getValue().getQuoteReminderTime()).isEqualTo(LocalTime.of(21, 0));
+        assertThat(res.quoteReminderTime()).isEqualTo(LocalTime.of(21, 0));
+    }
+
+    @Test
+    @DisplayName("성공: 요청에서 시간을 생략하면 기존 시간이 유지된다")
+    void updateSetting_omittedTime_keepsExisting() {
+        NotificationSetting existing = NotificationSetting.builder()
+                .member(receiver).quoteReminderTime(LocalTime.of(20, 0)).build();
+        when(notificationSettingRepository.findByMember(receiver)).thenReturn(Optional.of(existing));
+
+        NotificationSettingResponse res = notificationService.updateSetting(receiver, settingRequest(true, null));
+
+        assertThat(existing.getQuoteReminderTime()).isEqualTo(LocalTime.of(20, 0));
+        assertThat(existing.getLastQuoteReminderDate()).isNull();
+        assertThat(res.quoteReminderTime()).isEqualTo(LocalTime.of(20, 0));
+    }
+
+    @Test
+    @DisplayName("성공: 이미 지난 시각으로 변경하면 오늘은 발송하지 않도록 오늘 날짜가 기록된다")
+    void updateSetting_changeToPastTime_suppressesToday() {
+        NotificationSetting existing = NotificationSetting.builder()
+                .member(receiver).quoteReminderTime(LocalTime.of(10, 0)).build();
+        when(notificationSettingRepository.findByMember(receiver)).thenReturn(Optional.of(existing));
+
+        notificationService.updateSetting(receiver, settingRequest(true, LocalTime.MIDNIGHT));
+
+        assertThat(existing.getLastQuoteReminderDate()).isEqualTo(todayKst());
+    }
+
+    @Test
+    @DisplayName("성공: 아직 지나지 않은 시각으로 변경하면 오늘 발송 가능 상태가 유지된다")
+    void updateSetting_changeToFutureTime_keepsSendable() {
+        assumeTrue(LocalTime.now(NotificationSetting.REMINDER_ZONE).isBefore(LocalTime.of(23, 58)));
+        NotificationSetting existing = NotificationSetting.builder()
+                .member(receiver).quoteReminderTime(LocalTime.of(10, 0)).build();
+        when(notificationSettingRepository.findByMember(receiver)).thenReturn(Optional.of(existing));
+
+        notificationService.updateSetting(receiver, settingRequest(true, LocalTime.of(23, 59)));
+
+        assertThat(existing.getLastQuoteReminderDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("성공: 알림을 껐다가 켜면, 알림 시간이 이미 지났을 때 오늘은 발송하지 않는다")
+    void updateSetting_reEnable_pastTime_suppressesToday() {
+        NotificationSetting existing = NotificationSetting.builder()
+                .member(receiver).quoteReminderEnabled(false).quoteReminderTime(LocalTime.MIDNIGHT).build();
+        when(notificationSettingRepository.findByMember(receiver)).thenReturn(Optional.of(existing));
+
+        notificationService.updateSetting(receiver, settingRequest(true, null));
+
+        assertThat(existing.getLastQuoteReminderDate()).isEqualTo(todayKst());
+    }
+
+    @Test
+    @DisplayName("성공: 설정 row가 없으면 기본 시간 10:00이 응답된다")
+    void getSetting_noRow_returnsDefaultTime() {
+        when(notificationSettingRepository.findByMember(receiver)).thenReturn(Optional.empty());
+
+        assertThat(notificationService.getSetting(receiver).quoteReminderTime()).isEqualTo(LocalTime.of(10, 0));
+    }
+
+    @Test
+    @DisplayName("성공: 발신자가 없는 알림도 NotificationResponse로 변환된다")
+    void notificationResponse_nullSender_doesNotThrow() {
+        Notification reminder = Notification.builder()
+                .receiver(receiver).type("QUOTE_REMINDER").message("오늘의 명언을 작성할 시간이에요!").build();
+        ReflectionTestUtils.setField(reminder, "createDate", java.time.LocalDateTime.now());
+
+        NotificationResponse response = new NotificationResponse(reminder);
+
+        assertThat(response.senderName()).isNull();
+        assertThat(response.type()).isEqualTo("QUOTE_REMINDER");
     }
 }

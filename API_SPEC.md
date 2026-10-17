@@ -35,7 +35,7 @@ Base Path: `/api/profile`
 | 내 프로필 | 프로필 수정 | `PUT` | `/api/profile` | `multipart/form-data`<br>- `data` (JSON): `{ nickname?, introduction?, profileImage? }`<br>- `image` (file, optional): 프로필 이미지 | `ProfileResponse` | 이미지 업로드 시 S3 저장 |
 | 내 프로필 | 계정 정보 조회 | `GET` | `/api/profile/account` | 없음 | `AccountInfoResponse` | 성별, 생년월일, 소셜 연동 상태 |
 | 내 프로필 | 계정 정보 수정 | `PUT` | `/api/profile/account` | `{ email, birthYear, gender }` | `String` ("계정 정보가 수정되었습니다.") | gender: `MALE` \| `FEMALE` |
-| 내 프로필 | 회원 탈퇴 | `DELETE` | `/api/profile/account` | 없음 | `String` ("회원 탈퇴가 완료되었습니다.") | |
+| 내 프로필 | 회원 탈퇴 | `DELETE` | `/api/profile/account` | 없음 | `String` ("회원 탈퇴가 완료되었습니다.") | 탈퇴자가 받은/보낸 알림과 알림 설정도 함께 삭제 |
 | 타인 프로필 | 다른 회원 프로필 조회 | `GET` | `/api/profile/{id}` | Path: `id` (회원 ID) | `MemberResponse` | |
 
 ### ProfileResponse
@@ -221,16 +221,18 @@ Base Path: `/api/notifications`
 | 홈 (뱃지) | 미읽음 알림 개수 | `GET` | `/api/notifications/unread-count` | 없음 | `{ "count": Long }` | |
 | 알림 | 알림 읽음 처리 | `PATCH` | `/api/notifications/{id}/read` | Path: `id` | 없음 (200) | |
 | 설정 | 알림 설정 조회 | `GET` | `/api/notifications/settings` | 없음 | `NotificationSettingResponse` | |
-| 설정 | 알림 설정 수정 | `PUT` | `/api/notifications/settings` | `{ groupEnabled, friendEnabled, tagEnabled, pokeEnabled, likeEnabled, quoteReminderEnabled, marketingEnabled }` | `NotificationSettingResponse` | 모두 boolean |
+| 설정 | 알림 설정 수정 | `PUT` | `/api/notifications/settings` | `{ groupEnabled, friendEnabled, tagEnabled, pokeEnabled, likeEnabled, quoteReminderEnabled, marketingEnabled, quoteReminderTime }` | `NotificationSettingResponse` | boolean 7개는 필수. `quoteReminderTime`은 선택, `"HH:mm"`(KST), 생략하면 기존 값 유지, 기본값 `"10:00"` |
 
 ### NotificationResponse
 ```json
 { "id": Long, "type": String, "message": String, "targetId": Long, "senderName": String, "createDate": String, "isRead": Boolean }
 ```
 
+타입 `QUOTE_REMINDER`(오늘의 명언 작성 알림)는 발신자가 없어 `senderName`과 `targetId`가 `null`이며, 카테고리 필터에는 포함되지 않고 전체 조회에서만 나온다.
+
 ### NotificationSettingResponse
 ```json
-{ "groupEnabled": Boolean, "friendEnabled": Boolean, "tagEnabled": Boolean, "pokeEnabled": Boolean, "likeEnabled": Boolean, "quoteReminderEnabled": Boolean, "marketingEnabled": Boolean }
+{ "groupEnabled": Boolean, "friendEnabled": Boolean, "tagEnabled": Boolean, "pokeEnabled": Boolean, "likeEnabled": Boolean, "quoteReminderEnabled": Boolean, "marketingEnabled": Boolean, "quoteReminderTime": "HH:mm" }
 ```
 
 ---

@@ -2,6 +2,8 @@ package com.ll.demo.domain.profile.profile.service;
 
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
+import com.ll.demo.domain.notification.repository.NotificationRepository;
+import com.ll.demo.domain.notification.repository.NotificationSettingRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
 import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
 import com.ll.demo.domain.profile.profile.dto.AccountInfoResponse;
@@ -21,6 +23,8 @@ public class ProfileService {
     private final MemberRepository memberRepository;
     private final QuoteRepository quoteRepository;
     private final FriendshipRepository friendshipRepository;
+    private final NotificationRepository notificationRepository;
+    private final NotificationSettingRepository notificationSettingRepository;
 
     // 프로필 정보 조회
     @Transactional(readOnly = true)
@@ -87,6 +91,8 @@ public class ProfileService {
         Member persistentMember = memberRepository.findById(member.getId())
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
+        notificationRepository.deleteAllByMember(persistentMember);
+        notificationSettingRepository.deleteByMember(persistentMember);
         memberRepository.delete(persistentMember);
     }
 }

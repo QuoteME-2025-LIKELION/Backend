@@ -13,7 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 
 import java.util.Optional;
 
@@ -23,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class MemberServiceTest {
@@ -78,11 +81,11 @@ class MemberServiceTest {
         verify(memberRepository).saveAndFlush(member);
     }
 
-        private Member signUpSocial(String nickname, String email) {
+    private Member signUpSocial(String nickname, String email) {
         lenient().when(memberRepository.findByProviderAndProviderId(any(), any())).thenReturn(Optional.empty());
         lenient().when(memberRepository.findByEmail(any())).thenReturn(Optional.empty());
         lenient().when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        return memberService.findOrCreateSocialMember(MemberProvider.KAKAO, "1234567890123", email, nickname, null);
+        return memberService.findOrCreateSocialMember(MemberProvider.KAKAO, "1234567890123", email, true, nickname, null, true);
     }
 
     @Test
@@ -113,5 +116,101 @@ class MemberServiceTest {
     @DisplayName("소셜 가입 - 이름과 이메일이 모두 없으면 user")
     void socialNickname_noNameNoEmail_user() {
         assertThat(signUpSocial(null, null).getNickname()).isEqualTo("user");
+    }
+
+    private Member localMember(String email) {
+        return Member.builder().email(email).build();
+    }
+
+    private void assertSocialError(Runnable call, String expectedCode) {
+        assertThatThrownBy(call::run)
+                .isInstanceOfSatisfying(OAuth2AuthenticationException.class,
+                        e -> assertThat(e.getError().getErrorCode()).isEqualTo(expectedCode));
+    }
+
+    @Test
+    @DisplayName("소셜 - 이미 연결된 계정은 그대로 반환하고 이메일 조회도 하지 않는다")
+    void social_existingProviderAccount_returned() {
+        Member linked = localMember("a@test.com");
+        when(memberRepository.findByProviderAndProviderId(MemberProvider.GOOGLE, "g-1")).thenReturn(Optional.of(linked));
+
+        Member result = memberService.findOrCreateSocialMember(MemberProvider.GOOGLE, "g-1", "a@test.com", true, "이름", null, false);
+
+        assertThat(result).isSameAs(linked);
+        verify(memberRepository, never()).findByEmail(any());
+    }
+
+    @Test
+    @DisplayName("소셜 로그인 - 미가입 계정이면 생성하지 않고 account_not_found")
+    void social_loginMode_unknownAccount_notCreated() {
+        when(memberRepository.findByProviderAndProviderId(any(), any())).thenReturn(Optional.empty());
+        when(memberRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
+
+        assertSocialError(() -> memberService.findOrCreateSocialMember(
+                MemberProvider.GOOGLE, "g-2", "new@test.com", true, "이름", null, false),
+                MemberService.SOCIAL_ACCOUNT_NOT_FOUND);
+
+        verify(memberRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("소셜 가입 - 미가입 계정이면 생성한다")
+    void social_signupMode_unknownAccount_created() {
+        when(memberRepository.findByProviderAndProviderId(any(), any())).thenReturn(Optional.empty());
+        when(memberRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
+        when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Member result = memberService.findOrCreateSocialMember(
+                MemberProvider.GOOGLE, "g-3", "new@test.com", true, "이름", null, true);
+
+        assertThat(result.getProvider()).isEqualTo(MemberProvider.GOOGLE);
+        assertThat(result.getProviderId()).isEqualTo("g-3");
+        assertThat(result.getEmail()).isEqualTo("new@test.com");
+    }
+
+    @Test
+    @DisplayName("소셜 - 인증된 이메일이 기존 LOCAL 계정과 같으면 provider를 연결한다 (로그인 모드 포함)")
+    void social_verifiedEmail_linksExistingAccount() {
+        Member local = localMember("a@test.com");
+        when(memberRepository.findByProviderAndProviderId(any(), any())).thenReturn(Optional.empty());
+        when(memberRepository.findByEmail("a@test.com")).thenReturn(Optional.of(local));
+        when(memberRepository.save(local)).thenReturn(local);
+
+        Member result = memberService.findOrCreateSocialMember(
+                MemberProvider.GOOGLE, "g-4", "a@test.com", true, "이름", null, false);
+
+        assertThat(result).isSameAs(local);
+        assertThat(local.getProvider()).isEqualTo(MemberProvider.GOOGLE);
+        assertThat(local.getProviderId()).isEqualTo("g-4");
+    }
+
+    @Test
+    @DisplayName("소셜 - 인증되지 않은 이메일은 기존 계정에 연결하지 않고 email_not_verified")
+    void social_unverifiedEmail_doesNotLink() {
+        Member local = localMember("a@test.com");
+        when(memberRepository.findByProviderAndProviderId(any(), any())).thenReturn(Optional.empty());
+        when(memberRepository.findByEmail("a@test.com")).thenReturn(Optional.of(local));
+
+        assertSocialError(() -> memberService.findOrCreateSocialMember(
+                MemberProvider.KAKAO, "k-1", "a@test.com", false, "이름", null, true),
+                MemberService.SOCIAL_EMAIL_NOT_VERIFIED);
+
+        assertThat(local.getProvider()).isEqualTo(MemberProvider.LOCAL);
+        assertThat(local.getProviderId()).isNull();
+        verify(memberRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("소셜 가입 - 인증되지 않은 이메일이라도 겹치는 계정이 없으면 가입된다 (카카오 가짜 이메일)")
+    void social_unverifiedEmail_noExistingAccount_created() {
+        when(memberRepository.findByProviderAndProviderId(any(), any())).thenReturn(Optional.empty());
+        when(memberRepository.findByEmail("123@kakao.user")).thenReturn(Optional.empty());
+        when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Member result = memberService.findOrCreateSocialMember(
+                MemberProvider.KAKAO, "123", "123@kakao.user", false, null, null, true);
+
+        assertThat(result.getProvider()).isEqualTo(MemberProvider.KAKAO);
+        assertThat(result.getNickname()).isEqualTo("123");
     }
 }

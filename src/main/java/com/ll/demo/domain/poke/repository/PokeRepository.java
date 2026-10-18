@@ -4,6 +4,8 @@ import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.poke.entity.Poke;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface PokeRepository extends JpaRepository<Poke, Long> {
 

@@ -5,8 +5,12 @@ import com.ll.demo.global.security.oauth2.OAuth2FailureHandler;
 import com.ll.demo.global.security.oauth2.OAuth2MemberService;
 import com.ll.demo.global.security.oauth2.OAuth2SuccessHandler;
 import com.ll.demo.standard.dto.util.Ut;
+import com.ll.demo.global.security.oauth2.OAuth2LoginModeFilter;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,6 +33,7 @@ public class SecurityConfig {
     private final OAuth2MemberService oAuth2MemberService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final OAuth2FailureHandler oAuth2FailureHandler;
+    private final OAuth2LoginModeFilter oAuth2LoginModeFilter;
 
     @Value("${custom.frontend.allowed-origins:http://localhost:3000,http://localhost:5173}")
     private String allowedFrontendOrigins;
@@ -71,8 +76,8 @@ public class SecurityConfig {
                         .successHandler(oAuth2SuccessHandler)
                         .failureHandler(oAuth2FailureHandler)
                 )
-                .addFilterBefore(customAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
+                .addFilterBefore(customAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(oAuth2LoginModeFilter, OAuth2AuthorizationRequestRedirectFilter.class);
         return http.build();
     }
 

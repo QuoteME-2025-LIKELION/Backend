@@ -43,13 +43,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly =         String resolvedNickname = (nickname != null && !nickname.isBlank()) ? nickname : (email != null ? email.split("@")[0] : "user");)
+@Transactional(readOnly = true)
 public class MemberService {
 
     private static final int NICKNAME_MAX_LENGTH = 10;
+    public static final String SOCIAL_ACCOUNT_NOT_FOUND = "account_not_found";
+    public static final String SOCIAL_EMAIL_NOT_VERIFIED = "email_not_verified";
+
     private final AuthTokenService authTokenService;
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
@@ -118,45 +123,44 @@ public class MemberService {
     }
 
     // 프로필 정보 수정
-// MemberService.java
 
-@Transactional
-public void updateProfile(Long memberId, ProfileUpdateRequest request, String imageUrl) {
-    Member member = memberRepository.findById(memberId)
-            .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
+    @Transactional
+    public void updateProfile(Long memberId, ProfileUpdateRequest request, String imageUrl) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
 
-    // 값이 있는 필드만 수정하도록 로직 수정
-    if (request != null) {
-        if (request.getNickname() != null && !request.getNickname().isBlank()) {
-            member.setNickname(request.getNickname());
+        // 값이 있는 필드만 수정하도록 로직 수정
+        if (request != null) {
+            if (request.getNickname() != null && !request.getNickname().isBlank()) {
+                member.setNickname(request.getNickname());
+            }
+            if (request.getIntroduction() != null) {
+                member.setIntroduction(request.getIntroduction());
+            }
         }
-        if (request.getIntroduction() != null) {
-            member.setIntroduction(request.getIntroduction());
+
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            member.setProfileImage(imageUrl);
         }
     }
 
-    if (imageUrl != null && !imageUrl.isEmpty()) {
-        member.setProfileImage(imageUrl);
-    }
-}
-
-//    // 닉네임, 이메일, 그룹명으로 회원 검색
-//    public List<MemberSearchResponse> searchMembers(String keyword, Long currentMemberId) {
-//        List<Member> membersByNicknameOrEmail = memberRepository
-//                .searchMembersByNicknameOrEmailUsername(keyword);
-//        List<Member> membersByGroupName = groupMemberRepository
-//                .findMembersByGroupNameContaining(keyword);
-//        Set<Member> combinedMembers = new HashSet<>(membersByNicknameOrEmail);
-//        combinedMembers.addAll(membersByGroupName);
-//
-//        List<Member> filteredMembers = combinedMembers.stream()
-//                .filter(m -> !m.getId().equals(currentMemberId))
-//                .toList();
-//
-//        return filteredMembers.stream()
-//                .map(MemberSearchResponse::of)
-//                .toList();
-//    }
+    //    // 닉네임, 이메일, 그룹명으로 회원 검색
+    //    public List<MemberSearchResponse> searchMembers(String keyword, Long currentMemberId) {
+    //        List<Member> membersByNicknameOrEmail = memberRepository
+    //                .searchMembersByNicknameOrEmailUsername(keyword);
+    //        List<Member> membersByGroupName = groupMemberRepository
+    //                .findMembersByGroupNameContaining(keyword);
+    //        Set<Member> combinedMembers = new HashSet<>(membersByNicknameOrEmail);
+    //        combinedMembers.addAll(membersByGroupName);
+    //
+    //        List<Member> filteredMembers = combinedMembers.stream()
+    //                .filter(m -> !m.getId().equals(currentMemberId))
+    //                .toList();
+    //
+    //        return filteredMembers.stream()
+    //                .map(MemberSearchResponse::of)
+    //                .toList();
+    //    }
 
     // 회원 및 그룹 검색
     public SearchCombinedResponse searchCombined(String keyword, Long currentMemberId) {
@@ -236,7 +240,8 @@ public void updateProfile(Long memberId, ProfileUpdateRequest request, String im
     @Transactional
     public Member findOrCreateSocialMember(
             MemberProvider provider, String providerId,
-            String email, String nickname, String profileImage) {
+            String email, boolean emailVerified, String nickname, String profileImage,
+            boolean createIfAbsent) {
 
         // 1. provider + providerId로 조회
         Optional<Member> existing = memberRepository.findByProviderAndProviderId(provider, providerId);
@@ -244,15 +249,24 @@ public void updateProfile(Long memberId, ProfileUpdateRequest request, String im
             return existing.get();
         }
 
-        // 2. 동일 이메일의 LOCAL 계정이 있으면 provider 연결 후 반환
+        // 2. 동일 이메일의 계정이 있으면, 제공자가 이메일을 인증한 경우에만 provider 연결 후 반환
         if (email != null) {
             Optional<Member> localMember = memberRepository.findByEmail(email);
             if (localMember.isPresent()) {
+                if (!emailVerified) {
+                    throw new OAuth2AuthenticationException(
+                            new OAuth2Error(SOCIAL_EMAIL_NOT_VERIFIED), "소셜 계정의 이메일이 인증되지 않았습니다.");
+                }
                 Member m = localMember.get();
                 m.setProvider(provider);
                 m.setProviderId(providerId);
                 return memberRepository.save(m);
             }
+        }
+
+        if (!createIfAbsent) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error(SOCIAL_ACCOUNT_NOT_FOUND), "존재하지 않는 계정입니다.");
         }
 
         // 3. 신규 소셜 회원 생성
@@ -274,7 +288,7 @@ public void updateProfile(Long memberId, ProfileUpdateRequest request, String im
         return memberRepository.save(newMember);
     }
 
-        private String limitNickname(String value) {
+    private String limitNickname(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }

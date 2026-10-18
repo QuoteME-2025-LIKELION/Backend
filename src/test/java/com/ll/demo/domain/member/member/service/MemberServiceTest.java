@@ -5,6 +5,8 @@ import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.rsData.RsData;
 import com.ll.demo.global.security.AuthTokenService;
+import com.ll.demo.domain.member.member.type.MemberProvider;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
+import static org.mockito.Mockito.lenient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
@@ -73,5 +76,42 @@ class MemberServiceTest {
 
         assertThat(token).isEqualTo(mockToken);
         verify(memberRepository).saveAndFlush(member);
+    }
+
+        private Member signUpSocial(String nickname, String email) {
+        lenient().when(memberRepository.findByProviderAndProviderId(any(), any())).thenReturn(Optional.empty());
+        lenient().when(memberRepository.findByEmail(any())).thenReturn(Optional.empty());
+        lenient().when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        return memberService.findOrCreateSocialMember(MemberProvider.KAKAO, "1234567890123", email, nickname, null);
+    }
+
+    @Test
+    @DisplayName("소셜 가입 - 10자 이하 닉네임은 그대로 저장")
+    void socialNickname_short_kept() {
+        assertThat(signUpSocial("홍길동", "a@test.com").getNickname()).isEqualTo("홍길동");
+    }
+
+    @Test
+    @DisplayName("소셜 가입 - 11자 이상 닉네임은 10자로 잘라 저장")
+    void socialNickname_long_truncated() {
+        assertThat(signUpSocial("가나다라마바사아자차카", "a@test.com").getNickname()).isEqualTo("가나다라마바사아자차");
+    }
+
+    @Test
+    @DisplayName("소셜 가입 - 이모지 중간에서 자르지 않는다")
+    void socialNickname_emojiBoundary() {
+        assertThat(signUpSocial("가나다라마바사아자\uD83D\uDE00", "a@test.com").getNickname()).isEqualTo("가나다라마바사아자");
+    }
+
+    @Test
+    @DisplayName("소셜 가입 - 이름이 비면 이메일 앞부분을 10자 이내로 사용")
+    void socialNickname_blank_fallsBackToEmail() {
+        assertThat(signUpSocial(" ", "abcdefghijklmnop@test.com").getNickname()).isEqualTo("abcdefghij");
+    }
+
+    @Test
+    @DisplayName("소셜 가입 - 이름과 이메일이 모두 없으면 user")
+    void socialNickname_noNameNoEmail_user() {
+        assertThat(signUpSocial(null, null).getNickname()).isEqualTo("user");
     }
 }

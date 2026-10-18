@@ -46,9 +46,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional(readOnly =         String resolvedNickname = (nickname != null && !nickname.isBlank()) ? nickname : (email != null ? email.split("@")[0] : "user");)
 public class MemberService {
 
+    private static final int NICKNAME_MAX_LENGTH = 10;
     private final AuthTokenService authTokenService;
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
@@ -255,7 +256,13 @@ public void updateProfile(Long memberId, ProfileUpdateRequest request, String im
         }
 
         // 3. 신규 소셜 회원 생성
-        String resolvedNickname = (nickname != null && !nickname.isBlank()) ? nickname : (email != null ? email.split("@")[0] : "user");
+        String resolvedNickname = limitNickname(nickname);
+        if (resolvedNickname == null) {
+            resolvedNickname = limitNickname(email != null ? email.split("@")[0] : null);
+        }
+        if (resolvedNickname == null) {
+            resolvedNickname = "user";
+        }
         Member newMember = Member.builder()
                 .email(email)
                 .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
@@ -267,6 +274,21 @@ public void updateProfile(Long memberId, ProfileUpdateRequest request, String im
         return memberRepository.save(newMember);
     }
 
+        private String limitNickname(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        if (value.length() <= NICKNAME_MAX_LENGTH) {
+            return value;
+        }
+        int end = NICKNAME_MAX_LENGTH;
+        if (Character.isHighSurrogate(value.charAt(end - 1)) && Character.isLowSurrogate(value.charAt(end))) {
+            end--;
+        }
+        String cut = value.substring(0, end).stripTrailing();
+        return cut.isEmpty() ? null : cut;
+    }
+    
     // 이하 게스트 초기 데이터 생성
     @Transactional
     public Member findOrCreateGuest() {

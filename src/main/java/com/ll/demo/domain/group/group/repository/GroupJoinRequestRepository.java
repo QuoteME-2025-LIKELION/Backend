@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Modifying;
 
 import java.util.List;
 import java.util.Optional;
@@ -33,4 +34,8 @@ public interface GroupJoinRequestRepository extends JpaRepository<GroupJoinReque
 
     // 특정 초대의 groupId + inviter + status + type 검증
     Optional<GroupJoinRequest> findByIdAndGroupAndInviterAndStatusAndType(Long id, Group group, Member inviter, JoinStatus status, InviteType type);
+
+    @Modifying
+    @Query("DELETE FROM GroupJoinRequest r WHERE r.requester = :member OR r.inviter = :member")
+    void deleteAllByMember(@Param("member") Member member);
 }

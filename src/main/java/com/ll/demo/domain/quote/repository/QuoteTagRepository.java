@@ -4,6 +4,7 @@ import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteTag;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 
 import java.util.List;
 
@@ -16,4 +17,8 @@ public interface QuoteTagRepository extends JpaRepository<QuoteTag, Long> {
 
     // 태그 중복 방지
     boolean existsByQuoteAndMember(Quote quote, Member member);
+
+    @Modifying
+    @Query("DELETE FROM QuoteTag t WHERE t.member = :member OR t.quote IN (SELECT q FROM Quote q WHERE q.author = :member)")
+    void deleteAllRelatedToMember(@Param("member") Member member);
 }

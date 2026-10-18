@@ -4,6 +4,7 @@ import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 
 import java.util.Optional;
 
@@ -13,4 +14,8 @@ public interface QuoteLikeRepository extends JpaRepository<QuoteLike, Long> {
 
     // 좋아요 취소를 위해 데이터 조회
     Optional<QuoteLike> findByQuoteAndMember(Quote quote, Member member);
+
+    @Modifying
+    @Query("DELETE FROM QuoteLike l WHERE l.member = :member OR l.quote IN (SELECT q FROM Quote q WHERE q.author = :member)")
+    void deleteAllRelatedToMember(@Param("member") Member member);
 }

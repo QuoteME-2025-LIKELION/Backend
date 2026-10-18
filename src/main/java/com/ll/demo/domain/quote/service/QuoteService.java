@@ -488,13 +488,30 @@ public class QuoteService {
     }
 
     public PagedResponse<QuoteDetailResponse> getFeed(Long memberId, LocalDate date, Long groupId) {
-        List<Long> friendIds = friendshipRepository.findFriendIds(memberId);
-
-        if (friendIds.isEmpty()) {
-            return PagedResponse.empty("친구를 추가하면 매일 피드에서 명언을 확인할 수 있어요");
+        List<Long> authorIds;
+        if (groupId != null) {
+            Group group = groupRepository.findById(groupId)
+                    .orElseThrow(() -> new GlobalException("404", "그룹을 찾을 수 없습니다."));
+            List<Long> groupMemberIds = groupMemberRepository.findByGroup(group).stream()
+                    .map(groupMember -> groupMember.getMember().getId())
+                    .toList();
+            if (!groupMemberIds.contains(memberId)) {
+                throw new GlobalException("403", "그룹 멤버가 아닙니다.");
+            }
+            authorIds = groupMemberIds.stream()
+                    .filter(id -> !id.equals(memberId))
+                    .toList();
+            if (authorIds.isEmpty()) {
+                return PagedResponse.empty("아직 아무도 명언을 작성하지 않았어요");
+            }
+        } else {
+            authorIds = friendshipRepository.findFriendIds(memberId);
+            if (authorIds.isEmpty()) {
+                return PagedResponse.empty("친구를 추가하면 매일 피드에서 명언을 확인할 수 있어요");
+            }
         }
 
-        List<Quote> quotes = quoteRepository.findFeedQuotes(friendIds, date, groupId);
+        List<Quote> quotes = quoteRepository.findFeedQuotes(authorIds, date);
 
         if (quotes.isEmpty()) {
             return PagedResponse.empty("아직 아무도 명언을 작성하지 않았어요");

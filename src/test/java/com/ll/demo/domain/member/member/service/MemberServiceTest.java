@@ -19,6 +19,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 
 import java.util.Optional;
 
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -169,11 +170,16 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("소셜 - 인증된 이메일이 기존 LOCAL 계정과 같으면 provider를 연결한다 (로그인 모드 포함)")
-    void social_verifiedEmail_linksExistingAccount() {
-        Member local = localMember("a@test.com");
+    @DisplayName("소셜 - 인증된 이메일이 기존 LOCAL 계정과 같으면 연결하고 기존 비밀번호와 리프레시 토큰을 무효화한다")
+    void social_verifiedEmail_linksExistingAccountAndInvalidatesLocalCredentials() {
+        Member local = Member.builder()
+                .email("a@test.com")
+                .password("old-known-hash")
+                .refreshToken("old-refresh")
+                .build();
         when(memberRepository.findByProviderAndProviderId(any(), any())).thenReturn(Optional.empty());
         when(memberRepository.findByEmail("a@test.com")).thenReturn(Optional.of(local));
+        when(passwordEncoder.encode(anyString())).thenReturn("rotated-hash");
         when(memberRepository.save(local)).thenReturn(local);
 
         Member result = memberService.findOrCreateSocialMember(
@@ -182,6 +188,8 @@ class MemberServiceTest {
         assertThat(result).isSameAs(local);
         assertThat(local.getProvider()).isEqualTo(MemberProvider.GOOGLE);
         assertThat(local.getProviderId()).isEqualTo("g-4");
+        assertThat(local.getPassword()).isEqualTo("rotated-hash");
+        assertThat(local.getRefreshToken()).isNull();
     }
 
     @Test
@@ -212,5 +220,15 @@ class MemberServiceTest {
 
         assertThat(result.getProvider()).isEqualTo(MemberProvider.KAKAO);
         assertThat(result.getNickname()).isEqualTo("123");
+    }
+
+    @Test
+    @DisplayName("이메일 가입 - 소셜 가짜 이메일 도메인(@kakao.user)은 거부한다")
+    void join_Fail_PlaceholderDomain() {
+        assertThatThrownBy(() -> memberService.join("123@Kakao.User", "pw123456", "1995"))
+                .isInstanceOf(GlobalException.class)
+                .hasMessageContaining("400-2");
+
+        verify(memberRepository, never()).save(any());
     }
 }

@@ -75,6 +75,9 @@ public class MemberService {
 
     @Transactional
     public RsData<Member> join(String email, String password, String birthYear) {
+        if (email.toLowerCase().endsWith("@kakao.user")) {
+            throw new GlobalException("400-2", "사용할 수 없는 이메일입니다.");
+        }
         memberRepository.findByEmail(email).ifPresent(ignored -> {
             throw new GlobalException("400-1", "이미 존재하는 이메일");
         });
@@ -260,6 +263,8 @@ public class MemberService {
                 Member m = localMember.get();
                 m.setProvider(provider);
                 m.setProviderId(providerId);
+                m.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+                m.setRefreshToken(null);
                 return memberRepository.save(m);
             }
         }

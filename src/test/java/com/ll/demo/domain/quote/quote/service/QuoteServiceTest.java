@@ -1,5 +1,7 @@
 package com.ll.demo.domain.quote.quote.service;
 
+import com.ll.demo.global.dto.PagedResponse;
+import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
 import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
 import com.ll.demo.domain.member.member.entity.Member;
@@ -18,6 +20,9 @@ import com.ll.demo.domain.quote.repository.QuoteTagRepository;
 import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
 import com.ll.demo.domain.quote.service.QuoteService;
 import com.ll.demo.global.gemini.GeminiService;
+import com.ll.demo.domain.group.group.entity.GroupMember;
+import com.ll.demo.domain.group.group.entity.Group;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -394,5 +399,59 @@ class QuoteServiceTest {
                 // sender (id=1) is not in group members; service should still return result without throwing
                 QuoteListDto result = quoteService.getQuoteList(sender, testDate, 50L);
                 assertThat(result.unwrittenMembers()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("성공: groupId가 있으면 친구 여부와 무관하게 본인 제외 그룹원의 명언을 조회한다")
+        void getFeed_withGroupId_usesGroupMembersExceptMe() {
+                LocalDate date = LocalDate.now();
+                Group group = Group.builder().name("햇살즈").leader(sender).build();
+                ReflectionTestUtils.setField(group, "id", 10L);
+                when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+                when(groupMemberRepository.findByGroup(group))
+                        .thenReturn(List.of(new GroupMember(group, sender), new GroupMember(group, author)));
+                when(quoteRepository.findFeedQuotes(List.of(2L), date)).thenReturn(List.of(testQuote));
+                when(memberRepository.findById(1L)).thenReturn(Optional.of(sender));
+
+                PagedResponse<QuoteDetailResponse> result = quoteService.getFeed(1L, date, 10L);
+
+                assertThat(result.getItems()).hasSize(1);
+                verify(friendshipRepository, never()).findFriendIds(anyLong());
+        }
+
+        @Test
+        @DisplayName("실패: 그룹 멤버가 아니면 403이고 조회하지 않는다")
+        void getFeed_withGroupId_nonMember_forbidden() {
+                LocalDate date = LocalDate.now();
+                Group group = Group.builder().name("햇살즈").leader(author).build();
+                when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+                when(groupMemberRepository.findByGroup(group)).thenReturn(List.of(new GroupMember(group, author)));
+
+                GlobalException ex = assertThrows(GlobalException.class, () -> quoteService.getFeed(1L, date, 10L));
+
+                assertThat(ex.getMessage()).contains("403");
+                verify(quoteRepository, never()).findFeedQuotes(any(), any());
+        }
+
+        @Test
+        @DisplayName("실패: 존재하지 않는 그룹이면 404")
+        void getFeed_withGroupId_groupNotFound() {
+                when(groupRepository.findById(10L)).thenReturn(Optional.empty());
+
+                GlobalException ex = assertThrows(GlobalException.class, () -> quoteService.getFeed(1L, LocalDate.now(), 10L));
+
+                assertThat(ex.getMessage()).contains("404");
+        }
+
+        @Test
+        @DisplayName("회귀: groupId가 없고 친구가 없으면 안내 메시지를 반환한다")
+        void getFeed_withoutGroupId_noFriends_returnsEmptyMessage() {
+                when(friendshipRepository.findFriendIds(1L)).thenReturn(List.of());
+
+                PagedResponse<QuoteDetailResponse> result = quoteService.getFeed(1L, LocalDate.now(), null);
+
+                assertThat(result.getItems()).isEmpty();
+                assertThat(result.getEmptyMessage()).contains("친구를 추가하면");
+                verify(quoteRepository, never()).findFeedQuotes(any(), any());
         }
 }

@@ -6,6 +6,8 @@ import com.ll.demo.domain.member.member.entity.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Modifying;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -18,4 +20,8 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
     // 그룹 이름 키워드가 포함된 그룹 멤버
     @Query("SELECT gm.member FROM GroupMember gm JOIN gm.group g WHERE LOWER(g.name) LIKE LOWER(CONCAT('%', :groupNameKeyword, '%'))")
     List<Member> findMembersByGroupNameContaining(@Param("groupNameKeyword") String groupNameKeyword);
+
+    @Modifying
+    @Query("DELETE FROM GroupMember gm WHERE gm.member = :member")
+    void deleteAllByMember(@Param("member") Member member);
 }

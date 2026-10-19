@@ -6,6 +6,7 @@ import com.ll.demo.domain.member.member.entity.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Modifying;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,4 +31,8 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Long> {
     void deleteByMemberAndFriend(Member member, Member friend);
 
     Optional<Friendship> findByMemberAndFriend(Member member, Member friend);
+
+    @Modifying
+    @Query("DELETE FROM Friendship f WHERE f.member = :member OR f.friend = :member")
+    void deleteAllByMemberOrFriend(@Param("member") Member member);
 }

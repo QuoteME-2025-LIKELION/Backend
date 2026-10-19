@@ -77,7 +77,11 @@ public class ApiV1MemberController {
         Member member = memberService.findByEmail(body.getEmail())
                 .orElseThrow(() -> new GlobalException("404-1", "존재하지 않는 계정입니다. 회원가입으로 이동하시겠어요?"));
 
-        String accessToken = authTokenService.genToken(member, AppConfig.getAccessTokenExpirationSec());
+        if (!memberService.checkPassword(member, body.getPassword())) {
+            throw new GlobalException("401-1", "이메일 또는 비밀번호가 올바르지 않습니다.");
+        }
+
+        String accessToken = authTokenService.genToken(member, AppConfig.getAccessTokenExpirationSec());        
         String refreshToken = memberService.genRefreshToken(member);
 
         rq.setCookie(response, "accessToken", accessToken, AppConfig.getAccessTokenExpirationSec());

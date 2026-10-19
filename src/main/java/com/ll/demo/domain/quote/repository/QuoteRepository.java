@@ -7,6 +7,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Modifying;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -15,8 +16,8 @@ import java.util.List;
 public interface QuoteRepository extends JpaRepository<Quote, Long> {
     // 특정 날짜의 친구들 명언 조회
     // groupId가 없으면 전체 친구 피드, 있으면 해당 그룹의 친구들만 조회
-    @Query("SELECT q FROM Quote q WHERE q.author.id IN :friendIds AND (:groupId IS NULL OR q.group.id = :groupId) AND q.createDate >= :#{#date.atStartOfDay()} AND q.createDate <= :#{#date.atTime(java.time.LocalTime.MAX)} ORDER BY q.createDate DESC")
-    List<Quote> findFeedQuotes(@Param("friendIds") List<Long> friendIds, @Param("date") java.time.LocalDate date, @Param("groupId") Long groupId);
+    @Query("SELECT q FROM Quote q WHERE q.author.id IN :authorIds AND q.createDate >= :#{#date.atStartOfDay()} AND q.createDate <= :#{#date.atTime(java.time.LocalTime.MAX)} ORDER BY q.createDate DESC")
+    List<Quote> findFeedQuotes(@Param("authorIds") List<Long> authorIds, @Param("date") java.time.LocalDate date);
 
     // 나의 명언 조회
     List<Quote> findAllByAuthorIdOrderByCreateDateDesc(Long authorId);
@@ -57,5 +58,7 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
             @Param("endDate") LocalDateTime endDate
     );
 
-
+    @Modifying
+    @Query("DELETE FROM Quote q WHERE q.author = :member")
+    void deleteAllByAuthor(@Param("member") Member member);
 }

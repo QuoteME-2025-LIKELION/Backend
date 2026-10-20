@@ -16,8 +16,8 @@ import java.util.List;
 public interface QuoteRepository extends JpaRepository<Quote, Long> {
     // 특정 날짜의 친구들 명언 조회
     // groupId가 없으면 전체 친구 피드, 있으면 해당 그룹의 친구들만 조회
-    @Query("SELECT q FROM Quote q WHERE q.author.id IN :authorIds AND q.createDate >= :#{#date.atStartOfDay()} AND q.createDate <= :#{#date.atTime(java.time.LocalTime.MAX)} ORDER BY q.createDate DESC")
-    List<Quote> findFeedQuotes(@Param("authorIds") List<Long> authorIds, @Param("date") java.time.LocalDate date);
+    @Query("SELECT q FROM Quote q WHERE q.author.id IN :authorIds AND q.createDate >= :start AND q.createDate < :end ORDER BY q.createDate DESC")
+    List<Quote> findFeedQuotes(@Param("authorIds") List<Long> authorIds, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     // 나의 명언 조회
     List<Quote> findAllByAuthorIdOrderByCreateDateDesc(Long authorId);

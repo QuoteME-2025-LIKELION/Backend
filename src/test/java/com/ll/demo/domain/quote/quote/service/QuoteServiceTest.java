@@ -410,7 +410,8 @@ class QuoteServiceTest {
                 when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
                 when(groupMemberRepository.findByGroup(group))
                         .thenReturn(List.of(new GroupMember(group, sender), new GroupMember(group, author)));
-                when(quoteRepository.findFeedQuotes(List.of(2L), date)).thenReturn(List.of(testQuote));
+                when(quoteRepository.findFeedQuotes(List.of(2L), date.atStartOfDay(), date.plusDays(1).atStartOfDay()))
+                        .thenReturn(List.of(testQuote));
                 when(memberRepository.findById(1L)).thenReturn(Optional.of(sender));
 
                 PagedResponse<QuoteDetailResponse> result = quoteService.getFeed(1L, date, 10L);
@@ -430,7 +431,7 @@ class QuoteServiceTest {
                 GlobalException ex = assertThrows(GlobalException.class, () -> quoteService.getFeed(1L, date, 10L));
 
                 assertThat(ex.getMessage()).contains("403");
-                verify(quoteRepository, never()).findFeedQuotes(any(), any());
+                verify(quoteRepository, never()).findFeedQuotes(any(), any(), any());
         }
 
         @Test
@@ -452,6 +453,6 @@ class QuoteServiceTest {
 
                 assertThat(result.getItems()).isEmpty();
                 assertThat(result.getEmptyMessage()).contains("친구를 추가하면");
-                verify(quoteRepository, never()).findFeedQuotes(any(), any());
+                verify(quoteRepository, never()).findFeedQuotes(any(), any(), any());
         }
 }

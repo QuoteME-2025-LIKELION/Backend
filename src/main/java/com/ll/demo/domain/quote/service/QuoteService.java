@@ -511,7 +511,9 @@ public class QuoteService {
             }
         }
 
-        List<Quote> quotes = quoteRepository.findFeedQuotes(authorIds, date);
+        LocalDateTime start = date.atStartOfDay();
+        LocalDateTime end = date.plusDays(1).atStartOfDay();
+        List<Quote> quotes = quoteRepository.findFeedQuotes(authorIds, start, end);
 
         if (quotes.isEmpty()) {
             return PagedResponse.empty("아직 아무도 명언을 작성하지 않았어요");

@@ -8,6 +8,11 @@ import com.ll.demo.domain.member.member.dto.FriendResponse;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.member.member.service.MemberService;
+import com.ll.demo.domain.notification.entity.Notification;
+import com.ll.demo.domain.notification.entity.NotificationSetting;
+import com.ll.demo.domain.notification.repository.NotificationRepository;
+import com.ll.demo.domain.notification.repository.NotificationSettingRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +41,12 @@ class FriendshipServiceTest {
 
     @Autowired
     private MemberRepository memberRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
+    private NotificationSettingRepository notificationSettingRepository;
 
     private Member a;
     private Member b;
@@ -107,5 +118,36 @@ class FriendshipServiceTest {
         assertThat(memberService.getFriendList(b.getId())).isEmpty();
         assertThat(friendshipService.getFriendRequests(a)).isEmpty();
         assertThat(friendshipService.getFriendRequests(b)).isEmpty();
+    }
+
+        @Test
+    @DisplayName("거절 시: 요청자에게 FRIEND_REJECTED 알림이 1건 생성된다")
+    void rejectCreatesNotificationForRequester() {
+        friendshipService.sendFriendRequest(a, b.getId());
+        Long requestId = friendshipService.getFriendRequests(b).get(0).getRequestId();
+
+        friendshipService.rejectFriendRequest(b, requestId);
+
+        List<Notification> notifications =
+                notificationRepository.findByReceiverIdAndTypeOrderByCreateDateDesc(a.getId(), "FRIEND_REJECTED");
+        assertThat(notifications).hasSize(1);
+        Notification notification = notifications.get(0);
+        assertThat(notification.getSender().getId()).isEqualTo(b.getId());
+        assertThat(notification.getMessage()).isEqualTo("비님이 친구 요청을 거절했습니다.");
+        assertThat(notification.getTargetId()).isEqualTo(b.getId());
+    }
+
+    @Test
+    @DisplayName("거절 시: 요청자가 친구 알림을 꺼두었으면 알림이 생성되지 않는다")
+    void rejectDoesNotCreateNotificationWhenFriendDisabled() {
+        notificationSettingRepository.save(NotificationSetting.builder()
+                .member(a).friendEnabled(false).build());
+        friendshipService.sendFriendRequest(a, b.getId());
+        Long requestId = friendshipService.getFriendRequests(b).get(0).getRequestId();
+
+        friendshipService.rejectFriendRequest(b, requestId);
+
+        assertThat(notificationRepository
+                .findByReceiverIdAndTypeOrderByCreateDateDesc(a.getId(), "FRIEND_REJECTED")).isEmpty();
     }
 }

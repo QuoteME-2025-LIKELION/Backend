@@ -433,18 +433,18 @@ public class GroupService {
         }
         group.setMotto(newMotto);
 
-        // 그룹원 전체에게 메시지 변경 알림 발송
-        groupMemberRepository.findByGroup(group).stream()
-                .map(GroupMember::getMember)
-                .filter(m -> !m.getId().equals(requester.getId()))
-                .forEach(member -> notificationService.create(
-                        member,
-                        requester,
-                        "GROUP_MOTTO",
-                        requester.getNickname() + "님이 '" + group.getName() + "' 그룹 좌우명을 변경했습니다.",
-                        group.getId()
-                ));
-    }
+        // 그룹원 전체에게 익명 메시지 변경 알림 발송
+    groupMemberRepository.findByGroup(group).stream()
+        .map(GroupMember::getMember)
+        .filter(member -> !member.getId().equals(requester.getId()))
+        .forEach(member -> notificationService.create(
+                member,
+                null,
+                "GROUP_MOTTO",
+                "'" + group.getName() + "' 그룹 메시지가 변경되었어요",
+                group.getId()
+        ));
+}
 
     // 그룹 삭제
     @Transactional

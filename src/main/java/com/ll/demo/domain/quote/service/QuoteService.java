@@ -30,7 +30,6 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Collections;
 import java.util.stream.Collectors;
 
 @Service
@@ -235,20 +234,16 @@ public class QuoteService {
                 })
                 .toList();
 
-        // compute unwritten members only when groupId is provided
-        List<UnwrittenMemberResponse> unwrittenMembers = Collections.emptyList();
-        if (groupId != null) {
-            // authors who have at least one quote in the date range
-            Set<Long> authorsWithQuote = quotes.stream()
-                .map(q -> q.getAuthor().getId())
-                .collect(Collectors.toSet());
+        // authors who have at least one quote in the date range
+        Set<Long> authorsWithQuote = quotes.stream()
+            .map(q -> q.getAuthor().getId())
+            .collect(Collectors.toSet());
 
-            unwrittenMembers = targetMembers.stream()
-                .filter(m -> !authorsWithQuote.contains(m.getId()))
-                .filter(m -> !m.getId().equals(currentUser.getId()))
-                .map(m -> new com.ll.demo.domain.quote.dto.UnwrittenMemberResponse(m.getId(), m.getNickname(), m.getProfileImage()))
-                .toList();
-        }
+        List<UnwrittenMemberResponse> unwrittenMembers = targetMembers.stream()
+            .filter(m -> !authorsWithQuote.contains(m.getId()))
+            .filter(m -> !m.getId().equals(currentUser.getId()))
+            .map(m -> new com.ll.demo.domain.quote.dto.UnwrittenMemberResponse(m.getId(), m.getNickname(), m.getProfileImage()))
+            .toList();
 
         return new QuoteListDto(myQuotes, otherQuotes, unwrittenMembers);
     }

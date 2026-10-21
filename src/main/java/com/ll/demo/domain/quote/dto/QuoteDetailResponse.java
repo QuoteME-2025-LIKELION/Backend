@@ -16,13 +16,15 @@ public record QuoteDetailResponse(
         String timeAgo,
         boolean isLiked,
         boolean isBookmarked,
-        boolean isFriendQuote
+        boolean isFriendQuote,
+        String myTagStatus
 ) { public static QuoteDetailResponse from(
             Quote quote,
             List<String> taggedNicknames,
             boolean isLiked,
             boolean isBookmarked,
-            boolean isFriend
+            boolean isFriend,
+            String myTagStatus
     ) {
         Duration duration = Duration.between(quote.getCreateDate(), LocalDateTime.now());
         String timeAgo = formatDuration(duration);
@@ -42,7 +44,8 @@ public record QuoteDetailResponse(
                 timeAgo,
                 isLiked,
                 isBookmarked,
-                isFriend
+                isFriend,
+                myTagStatus
         );
     }
 

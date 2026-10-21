@@ -228,7 +228,10 @@ public class QuoteService {
                     List<String> taggedNicknames = quoteTagRepository.findAllByQuote(q).stream()
                             .map(qt -> qt.getMember().getNickname())
                             .toList();
-                    return QuoteDetailResponse.from(q, taggedNicknames, isLiked, isBookmarked, true);
+                    String myTagStatus = resolveMyTagStatus(q, currentUser);
+                    return QuoteDetailResponse.from(
+                            q, taggedNicknames, isLiked, isBookmarked, true, myTagStatus
+                    );
                 })
                 .toList();
 
@@ -367,10 +370,12 @@ public class QuoteService {
         Member requester = memberRepository.findById(requesterId)
                 .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
 
+        if (quoteTagRepository.existsByQuoteAndMember(quote, requester)) {
+            throw new GlobalException("400-2", "이미 태그된 명언입니다.");
+        }
         if (quote.getAuthor().getId().equals(requesterId)) {
             throw new RuntimeException("본인 글에는 태그 요청을 할 수 없습니다.");
         }
-
         if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
             throw new GlobalException("400-1", "이미 태그 요청을 보냈습니다.");
         }
@@ -529,10 +534,23 @@ public class QuoteService {
                     List<String> taggedNicknames = quoteTagRepository.findAllByQuote(q).stream()
                             .map(qt -> qt.getMember().getNickname())
                             .toList();
-                    return QuoteDetailResponse.from(q, taggedNicknames, isLiked, isBookmarked, true);
+                    String myTagStatus = resolveMyTagStatus(q, currentUser);
+                    return QuoteDetailResponse.from(
+                            q, taggedNicknames, isLiked, isBookmarked, true, myTagStatus
+                    );
                 })
                 .toList();
 
         return PagedResponse.of(result);
+    }
+
+    private String resolveMyTagStatus(Quote quote, Member member) {
+        if (quoteTagRepository.existsByQuoteAndMember(quote, member)) {
+            return "TAGGED";
+        }
+        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, member)) {
+            return "REQUESTED";
+        }
+        return "NONE";
     }
 }

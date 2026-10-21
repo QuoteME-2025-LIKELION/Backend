@@ -455,4 +455,96 @@ class QuoteServiceTest {
                 assertThat(result.getEmptyMessage()).contains("친구를 추가하면");
                 verify(quoteRepository, never()).findFeedQuotes(any(), any(), any());
         }
+
+        @Test
+        @DisplayName("실패: 이미 태그된 명언에 태그 요청하면 400이고 요청이 저장되지 않는다")
+        void requestTag_alreadyTagged_throws400() {
+        when(quoteRepository.findById(100L)).thenReturn(Optional.of(testQuote));
+        when(memberRepository.findById(3L)).thenReturn(Optional.of(requester));
+        when(quoteTagRepository.existsByQuoteAndMember(testQuote, requester)).thenReturn(true);
+
+        GlobalException ex = assertThrows(
+                GlobalException.class,
+                () -> quoteService.requestTag(3L, 100L)
+        );
+
+        assertThat(ex.getRsData().getStatusCode()).isEqualTo(400);
+        assertThat(ex.getMessage()).contains("400-2");
+        verify(quoteTagRequestRepository, never()).save(any());
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("성공: 태그되지 않았고 기존 요청이 없으면 PENDING 요청이 저장되고 알림이 생성된다")
+        void requestTag_notTagged_savesPendingRequest() {
+        when(quoteRepository.findById(100L)).thenReturn(Optional.of(testQuote));
+        when(memberRepository.findById(3L)).thenReturn(Optional.of(requester));
+        when(quoteTagRepository.existsByQuoteAndMember(testQuote, requester)).thenReturn(false);
+        when(quoteTagRequestRepository.existsByQuoteAndRequester(testQuote, requester)).thenReturn(false);
+
+        quoteService.requestTag(3L, 100L);
+
+        ArgumentCaptor<QuoteTagRequest> captor =
+                ArgumentCaptor.forClass(QuoteTagRequest.class);
+        verify(quoteTagRequestRepository).save(captor.capture());
+
+        assertThat(captor.getValue().getStatus()).isEqualTo(TagRequestStatus.PENDING);
+        assertThat(captor.getValue().getRequester()).isEqualTo(requester);
+        verify(notificationService).create(
+                eq(author), eq(requester), eq("TAG_REQUEST"), anyString(), eq(100L)
+        );
+        }        
+
+        @Test
+        @DisplayName("회귀: 이미 대기 중인 요청이 있으면 400이고 요청이 저장되지 않는다")
+        void requestTag_alreadyRequested_throws400() {
+        when(quoteRepository.findById(100L)).thenReturn(Optional.of(testQuote));
+        when(memberRepository.findById(3L)).thenReturn(Optional.of(requester));
+        when(quoteTagRepository.existsByQuoteAndMember(testQuote, requester)).thenReturn(false);
+        when(quoteTagRequestRepository.existsByQuoteAndRequester(testQuote, requester)).thenReturn(true);
+
+        GlobalException ex = assertThrows(
+                GlobalException.class,
+                () -> quoteService.requestTag(3L, 100L)
+        );
+
+        assertThat(ex.getRsData().getStatusCode()).isEqualTo(400);
+        assertThat(ex.getMessage()).contains("400-1");
+        verify(quoteTagRequestRepository, never()).save(any());
+        }
+
+        
+
+
+    private QuoteDetailResponse getSingleFeedItem() {
+        LocalDate date = LocalDate.now();
+        when(friendshipRepository.findFriendIds(1L)).thenReturn(List.of(2L));
+        when(quoteRepository.findFeedQuotes(List.of(2L), date.atStartOfDay(), date.plusDays(1).atStartOfDay()))
+                .thenReturn(List.of(testQuote));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(sender));
+
+        return quoteService.getFeed(1L, date, null).getItems().get(0);
+    }
+
+    @Test
+    @DisplayName("성공: 피드의 myTagStatus는 태그되어 있으면 TAGGED다")
+    void getFeed_myTagStatus_tagged() {
+        when(quoteTagRepository.existsByQuoteAndMember(testQuote, sender)).thenReturn(true);
+
+        assertThat(getSingleFeedItem().myTagStatus()).isEqualTo("TAGGED");
+    }
+
+    @Test
+    @DisplayName("성공: 피드의 myTagStatus는 태그되지 않고 요청 이력이 있으면 REQUESTED다")
+    void getFeed_myTagStatus_requested() {
+        when(quoteTagRequestRepository.existsByQuoteAndRequester(testQuote, sender)).thenReturn(true);
+
+        assertThat(getSingleFeedItem().myTagStatus()).isEqualTo("REQUESTED");
+    }
+
+    @Test
+    @DisplayName("성공: 피드의 myTagStatus는 태그도 요청도 없으면 NONE이다")
+    void getFeed_myTagStatus_none() {
+        assertThat(getSingleFeedItem().myTagStatus()).isEqualTo("NONE");
+    }
 }

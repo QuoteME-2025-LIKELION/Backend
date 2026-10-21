@@ -313,16 +313,23 @@ public class GroupService {
         if (groupMemberRepository.existsByGroupAndMember(group, user)) {
             throw new GlobalException("400-3", "이미 그룹 멤버입니다.");
         }
-        boolean alreadyRequested = groupJoinRequestRepository.existsByGroupAndRequesterAndStatus(
-                group, user, JoinStatus.PENDING
+        boolean alreadyRequested = groupJoinRequestRepository.existsByGroupAndRequesterAndStatusAndType(
+                group, user, JoinStatus.PENDING, InviteType.JOIN_REQUEST
         );
         if (alreadyRequested) {
             throw new GlobalException("400-4", "이미 가입 승인 대기 중입니다.");
         }
         groupJoinRequestRepository.save(GroupJoinRequest.builder()
                 .group(group).requester(user).status(JoinStatus.PENDING).build());
-    }
 
+        notificationService.create(
+                group.getLeader(),
+                user,
+                "GROUP_JOIN_REQUEST",
+                user.getNickname() + "님이 '" + group.getName() + "' 그룹에 가입을 요청했습니다.",
+                group.getId()
+        );
+    }
     // 가입 요청 승인
     public void acceptJoinRequest(Member leader, Long requestId) {
         GroupJoinRequest joinReq = groupJoinRequestRepository.findById(requestId)

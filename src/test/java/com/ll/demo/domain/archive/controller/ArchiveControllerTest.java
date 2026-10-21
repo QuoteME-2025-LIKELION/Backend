@@ -1,5 +1,7 @@
 package com.ll.demo.domain.archive.controller;
 
+import com.ll.demo.global.exceptionHandlers.GlobalExceptionHandler;
+import com.ll.demo.standard.rq.Rq;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.service.QuoteService;
@@ -18,7 +20,16 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.time.YearMonth;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -36,8 +47,10 @@ class ArchiveControllerTest {
         ArchiveController controller = new ArchiveController(quoteService);
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
-                .build();
+        .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+        .setControllerAdvice(new GlobalExceptionHandler(mock(Rq.class)))
+        .setMessageConverters(jsonConverter())
+        .build();
     }
 
     @AfterEach
@@ -66,13 +79,13 @@ class ArchiveControllerTest {
         Long memberId = 42L;
         SecurityUser securityUser = createSecurityUser(memberId);
 
-        when(quoteService.findMyQuotes(memberId)).thenReturn(List.of());
+        when(quoteService.findMyQuotes(memberId, null)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/archives/me")
                         .with(authenticatedAs(securityUser)))
                 .andExpect(status().isOk());
 
-        verify(quoteService).findMyQuotes(eq(memberId));
+        verify(quoteService).findMyQuotes(eq(memberId), isNull());
     }
 
     @Test
@@ -102,7 +115,13 @@ class ArchiveControllerTest {
 
         verify(quoteService).findBookmarkedQuotes(eq(memberId));
     }
-
+    private static MappingJackson2HttpMessageConverter jsonConverter() {
+        ObjectMapper objectMapper = new ObjectMapper()
+                .findAndRegisterModules()
+                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return new MappingJackson2HttpMessageConverter(objectMapper);
+    }
     private static SecurityUser createSecurityUser(Long memberId) {
         Member member = Member.builder()
                 .email("archive-user@example.com")
@@ -128,5 +147,56 @@ class ArchiveControllerTest {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             return request;
         };
+    }
+
+        @Test
+    void getMyQuotes_withMonth_passesYearMonthToService() throws Exception {
+        Long memberId = 42L;
+        SecurityUser securityUser = createSecurityUser(memberId);
+        YearMonth month = YearMonth.of(2026, 9);
+
+        when(quoteService.findMyQuotes(memberId, month)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/archives/me")
+                        .param("month", "2026-09")
+                        .with(authenticatedAs(securityUser)))
+                .andExpect(status().isOk());
+
+        verify(quoteService).findMyQuotes(eq(memberId), eq(month));
+    }
+
+    @Test
+    void getMyQuotes_withInvalidMonth_returns400() throws Exception {
+        SecurityUser securityUser = createSecurityUser(42L);
+
+        mockMvc.perform(get("/api/archives/me")
+                        .param("month", "2026-9")
+                        .with(authenticatedAs(securityUser)))
+                .andExpect(status().isBadRequest());
+
+        verify(quoteService, never()).findMyQuotes(any(), any());
+    }
+
+    @Test
+    void getMyQuoteDates_withMonth_returnsDates() throws Exception {
+        Long memberId = 42L;
+        SecurityUser securityUser = createSecurityUser(memberId);
+
+        when(quoteService.findMyQuoteDates(memberId, YearMonth.of(2026, 9)))
+                .thenReturn(List.of(LocalDate.of(2026, 9, 20), LocalDate.of(2026, 9, 3)));
+
+        mockMvc.perform(get("/api/archives/me/dates")
+                        .param("month", "2026-09")
+                        .with(authenticatedAs(securityUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("2026-09-20"))
+                .andExpect(jsonPath("$[1]").value("2026-09-03"));
+    }
+
+    @Test
+    void getMyQuoteDates_withoutMonth_returns400() throws Exception {
+        mockMvc.perform(get("/api/archives/me/dates")
+                        .with(authenticatedAs(createSecurityUser(42L))))
+                .andExpect(status().isBadRequest());
     }
 }

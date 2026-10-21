@@ -28,6 +28,9 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
     // 특정 날짜의 특정 작성자 명언 조회 (아카이브 캘린더용)
     List<Quote> findAllByAuthorIdAndCreateDateBetweenOrderByCreateDateDesc(Long authorId, LocalDateTime start, LocalDateTime end);
 
+    // 특정 작성자의 명언 조회
+    List<Quote> findAllByAuthorIdAndCreateDateGreaterThanEqualAndCreateDateLessThanOrderByCreateDateDesc(Long authorId, LocalDateTime start, LocalDateTime end);
+
     // 1일 1명언 체크용
     boolean existsByAuthorIdAndCreateDateBetween(Long authorId, LocalDateTime start, LocalDateTime end);
 

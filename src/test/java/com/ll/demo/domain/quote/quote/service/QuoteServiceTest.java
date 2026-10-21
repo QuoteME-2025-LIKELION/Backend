@@ -31,7 +31,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.mockito.ArgumentCaptor;
 
+import java.time.YearMonth;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class QuoteServiceTest {
@@ -599,5 +601,23 @@ class QuoteServiceTest {
     @DisplayName("성공: 피드의 myTagStatus는 태그도 요청도 없으면 NONE이다")
     void getFeed_myTagStatus_none() {
         assertThat(getSingleFeedItem().myTagStatus()).isEqualTo("NONE");
+    }
+
+    @Test
+    @DisplayName("내 명언 날짜 목록: 같은 날 여러 건은 하루로 합치고 최신 날짜 순으로 반환한다")
+    void findMyQuoteDates_distinctDescending() {
+        Quote q1 = Quote.builder().author(sender).content("a").build();
+        ReflectionTestUtils.setField(q1, "createDate", LocalDateTime.of(2026, 9, 20, 18, 0));
+        Quote q2 = Quote.builder().author(sender).content("b").build();
+        ReflectionTestUtils.setField(q2, "createDate", LocalDateTime.of(2026, 9, 20, 9, 0));
+        Quote q3 = Quote.builder().author(sender).content("c").build();
+        ReflectionTestUtils.setField(q3, "createDate", LocalDateTime.of(2026, 9, 3, 12, 0));
+
+        when(quoteRepository.findAllByAuthorIdAndCreateDateGreaterThanEqualAndCreateDateLessThanOrderByCreateDateDesc(
+                eq(sender.getId()), any(), any())).thenReturn(List.of(q1, q2, q3));
+
+        List<LocalDate> result = quoteService.findMyQuoteDates(sender.getId(), YearMonth.of(2026, 9));
+
+        assertThat(result).containsExactly(LocalDate.of(2026, 9, 20), LocalDate.of(2026, 9, 3));
     }
 }

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.time.YearMonth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -87,5 +88,53 @@ class QuoteRepositoryTest {
         Quote quote = quoteRepository.save(Quote.builder().author(author).content(content).build());
         quote.setCreateDateForDemo(createDate);
         return quoteRepository.saveAndFlush(quote);
+    }
+
+        @Test
+    @DisplayName("월 조회: 말일 23:59:59와 1일 00:00:00은 포함, 전월 말/다음 달 1일 0시는 제외하고 최신순")
+    void findMonthQuotes_boundaries_latestFirst() {
+        Member me = saveMember("month-me@test.com", "나");
+        Member other = saveMember("month-other@test.com", "다른사람");
+        YearMonth month = YearMonth.of(2026, 9);
+
+        saveQuote(me, "전월 말", LocalDateTime.of(2026, 8, 31, 23, 59, 59));
+        saveQuote(me, "1일 처음", LocalDateTime.of(2026, 9, 1, 0, 0, 0));
+        saveQuote(me, "중간", LocalDateTime.of(2026, 9, 15, 12, 0, 0));
+        saveQuote(me, "말일 마지막", LocalDateTime.of(2026, 9, 30, 23, 59, 59));
+        saveQuote(me, "다음 달 처음", LocalDateTime.of(2026, 10, 1, 0, 0, 0));
+        saveQuote(other, "타인", LocalDateTime.of(2026, 9, 10, 10, 0, 0));
+
+        List<Quote> result = quoteRepository
+                .findAllByAuthorIdAndCreateDateGreaterThanEqualAndCreateDateLessThanOrderByCreateDateDesc(
+                        me.getId(), month.atDay(1).atStartOfDay(), month.plusMonths(1).atDay(1).atStartOfDay());
+
+        assertThat(result).extracting(Quote::getContent)
+                .containsExactly("말일 마지막", "중간", "1일 처음");
+    }
+
+    @Test
+    @DisplayName("월 조회: 해당 월에 명언이 없으면 빈 목록을 반환한다")
+    void findMonthQuotes_emptyMonth_returnsEmpty() {
+        Member me = saveMember("month-empty@test.com", "나");
+        saveQuote(me, "8월", LocalDateTime.of(2026, 8, 10, 10, 0, 0));
+
+        List<Quote> result = quoteRepository
+                .findAllByAuthorIdAndCreateDateGreaterThanEqualAndCreateDateLessThanOrderByCreateDateDesc(
+                        me.getId(), LocalDateTime.of(2026, 9, 1, 0, 0), LocalDateTime.of(2026, 10, 1, 0, 0));
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("전체 조회: 서로 다른 날짜 3건을 임의 순서로 저장해도 항상 최신순")
+    void findAllByAuthorIdOrderByCreateDateDesc_isDeterministic() {
+        Member me = saveMember("order-me@test.com", "나");
+        saveQuote(me, "가운데", LocalDateTime.of(2026, 9, 10, 10, 0));
+        saveQuote(me, "최신", LocalDateTime.of(2026, 9, 20, 10, 0));
+        saveQuote(me, "오래됨", LocalDateTime.of(2026, 9, 1, 10, 0));
+
+        List<Quote> result = quoteRepository.findAllByAuthorIdOrderByCreateDateDesc(me.getId());
+
+        assertThat(result).extracting(Quote::getContent).containsExactly("최신", "가운데", "오래됨");
     }
 }

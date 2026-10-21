@@ -14,6 +14,10 @@ import com.ll.demo.domain.group.group.repository.GroupRepository;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.global.exceptions.GlobalException;
+import com.ll.demo.domain.notification.dto.NotificationResponse;
+import com.ll.demo.domain.notification.entity.Notification;
+import com.ll.demo.domain.notification.repository.NotificationRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +52,9 @@ class GroupServiceTest {
 
     @Autowired
     private FriendshipRepository friendshipRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     private Member leader;
     private Member invitee1;
@@ -209,5 +216,26 @@ class GroupServiceTest {
         GroupJoinRequest persisted = groupJoinRequestRepository.findById(legacy.getId()).orElseThrow();
         assertThat(persisted.getInviter()).isNull();
     }
-}
 
+    @Test
+    void updateMotto_sendsAnonymousNotificationToOtherMembersOnly() {
+        groupService.updateMotto(leader, group.getId(), "새로운 메시지");
+
+        List<Notification> received = notificationRepository
+                .findByReceiverIdAndTypeOrderByCreateDateDesc(normalMember.getId(), "GROUP_MOTTO");
+
+        assertThat(received).hasSize(1);
+        Notification notification = received.get(0);
+        assertThat(notification.getSender()).isNull();
+        assertThat(notification.getMessage()).isEqualTo("'테스트그룹' 그룹 메시지가 변경되었어요");
+        assertThat(notification.getMessage()).doesNotContain(leader.getNickname());
+        assertThat(notification.getTargetId()).isEqualTo(group.getId());
+
+        NotificationResponse response = new NotificationResponse(notification);
+        assertThat(response.senderName()).isNull();
+        assertThat(response.message()).doesNotContain(leader.getNickname());
+
+        assertThat(notificationRepository
+                .findByReceiverIdAndTypeOrderByCreateDateDesc(leader.getId(), "GROUP_MOTTO")).isEmpty();
+    }
+}

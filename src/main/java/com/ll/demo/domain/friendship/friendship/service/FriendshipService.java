@@ -116,6 +116,14 @@ public class FriendshipService {
         }
 
         request.updateStatus(FriendshipStatus.REJECTED);
+
+        notificationService.create(
+                request.getMember(),
+                me,
+                "FRIEND_REJECTED",
+                me.getNickname() + "님이 친구 요청을 거절했습니다.",
+                me.getId()
+        );
     }
 
     // 친구 삭제

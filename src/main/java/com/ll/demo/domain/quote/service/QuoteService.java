@@ -30,7 +30,6 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Collections;
 import java.util.stream.Collectors;
 
 @Service
@@ -228,24 +227,23 @@ public class QuoteService {
                     List<String> taggedNicknames = quoteTagRepository.findAllByQuote(q).stream()
                             .map(qt -> qt.getMember().getNickname())
                             .toList();
-                    return QuoteDetailResponse.from(q, taggedNicknames, isLiked, isBookmarked, true);
+                    String myTagStatus = resolveMyTagStatus(q, currentUser);
+                    return QuoteDetailResponse.from(
+                            q, taggedNicknames, isLiked, isBookmarked, true, myTagStatus
+                    );
                 })
                 .toList();
 
-        // compute unwritten members only when groupId is provided
-        List<UnwrittenMemberResponse> unwrittenMembers = Collections.emptyList();
-        if (groupId != null) {
-            // authors who have at least one quote in the date range
-            Set<Long> authorsWithQuote = quotes.stream()
-                .map(q -> q.getAuthor().getId())
-                .collect(Collectors.toSet());
+        // authors who have at least one quote in the date range
+        Set<Long> authorsWithQuote = quotes.stream()
+            .map(q -> q.getAuthor().getId())
+            .collect(Collectors.toSet());
 
-            unwrittenMembers = targetMembers.stream()
-                .filter(m -> !authorsWithQuote.contains(m.getId()))
-                .filter(m -> !m.getId().equals(currentUser.getId()))
-                .map(m -> new com.ll.demo.domain.quote.dto.UnwrittenMemberResponse(m.getId(), m.getNickname(), m.getProfileImage()))
-                .toList();
-        }
+        List<UnwrittenMemberResponse> unwrittenMembers = targetMembers.stream()
+            .filter(m -> !authorsWithQuote.contains(m.getId()))
+            .filter(m -> !m.getId().equals(currentUser.getId()))
+            .map(m -> new com.ll.demo.domain.quote.dto.UnwrittenMemberResponse(m.getId(), m.getNickname(), m.getProfileImage()))
+            .toList();
 
         return new QuoteListDto(myQuotes, otherQuotes, unwrittenMembers);
     }
@@ -367,10 +365,12 @@ public class QuoteService {
         Member requester = memberRepository.findById(requesterId)
                 .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
 
+        if (quoteTagRepository.existsByQuoteAndMember(quote, requester)) {
+            throw new GlobalException("400-2", "이미 태그된 명언입니다.");
+        }
         if (quote.getAuthor().getId().equals(requesterId)) {
             throw new RuntimeException("본인 글에는 태그 요청을 할 수 없습니다.");
         }
-
         if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
             throw new GlobalException("400-1", "이미 태그 요청을 보냈습니다.");
         }
@@ -529,10 +529,23 @@ public class QuoteService {
                     List<String> taggedNicknames = quoteTagRepository.findAllByQuote(q).stream()
                             .map(qt -> qt.getMember().getNickname())
                             .toList();
-                    return QuoteDetailResponse.from(q, taggedNicknames, isLiked, isBookmarked, true);
+                    String myTagStatus = resolveMyTagStatus(q, currentUser);
+                    return QuoteDetailResponse.from(
+                            q, taggedNicknames, isLiked, isBookmarked, true, myTagStatus
+                    );
                 })
                 .toList();
 
         return PagedResponse.of(result);
+    }
+
+    private String resolveMyTagStatus(Quote quote, Member member) {
+        if (quoteTagRepository.existsByQuoteAndMember(quote, member)) {
+            return "TAGGED";
+        }
+        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, member)) {
+            return "REQUESTED";
+        }
+        return "NONE";
     }
 }

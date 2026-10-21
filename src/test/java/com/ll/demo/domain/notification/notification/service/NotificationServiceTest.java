@@ -10,6 +10,9 @@ import com.ll.demo.domain.notification.entity.NotificationSetting;
 import com.ll.demo.domain.notification.repository.NotificationRepository;
 import com.ll.demo.domain.notification.repository.NotificationSettingRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
+import com.ll.demo.domain.quote.entity.Quote;
+import com.ll.demo.domain.quote.repository.QuoteRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,10 +21,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,6 +47,8 @@ class NotificationServiceTest {
     @Mock private MemberRepository memberRepository;
 
     @Mock private NotificationSettingRepository notificationSettingRepository;
+
+    @Mock private QuoteRepository quoteRepository;
 
     private Member receiver;
     private Member sender;
@@ -251,5 +258,106 @@ class NotificationServiceTest {
 
         assertThat(response.senderName()).isNull();
         assertThat(response.type()).isEqualTo("QUOTE_REMINDER");
+    }
+
+    private Notification notificationOf(String type, Long targetId) {
+        Notification notification = Notification.builder()
+                .receiver(receiver).sender(sender).type(type).message("메시지").targetId(targetId).build();
+        ReflectionTestUtils.setField(notification, "createDate", java.time.LocalDateTime.of(2026, 10, 21, 22, 0));
+        return notification;
+    }
+
+    private Quote quoteOf(Long id, java.time.LocalDateTime createDate) {
+        Quote quote = Quote.builder().author(sender).content("명언").build();
+        ReflectionTestUtils.setField(quote, "id", id);
+        ReflectionTestUtils.setField(quote, "createDate", createDate);
+        return quote;
+    }
+
+    @Test
+    @DisplayName("성공: TAG 계열 알림에는 알림 생성일이 아닌 대상 명언의 작성일이 담긴다")
+    void findMyNotifications_tagTypes_includeQuoteDate() {
+        Quote quote = quoteOf(100L, java.time.LocalDateTime.of(2026, 10, 1, 9, 0));
+        when(notificationRepository.findByReceiverIdOrderByCreateDateDesc(1L)).thenReturn(List.of(
+                notificationOf("TAG", 100L),
+                notificationOf("TAG_REQUEST", 100L),
+                notificationOf("TAG_ACCEPTED", 100L)));
+        when(quoteRepository.findAllById(anyIterable())).thenReturn(List.of(quote));
+
+        List<NotificationResponse> result = notificationService.findMyNotifications(1L, null);
+
+        assertThat(result).hasSize(3);
+        assertThat(result).allSatisfy(response -> {
+            assertThat(response.quoteDate()).isEqualTo("2026-10-01");
+            assertThat(response.createDate()).startsWith("2026-10-21");
+        });
+    }
+
+    @Test
+    @DisplayName("성공: TAG 계열이 아닌 알림에는 targetId가 명언 ID와 같아도 작성일이 담기지 않는다")
+    void findMyNotifications_nonTagTypes_haveNoQuoteDate() {
+        Quote quote = quoteOf(100L, java.time.LocalDateTime.of(2026, 10, 1, 9, 0));
+        when(notificationRepository.findByReceiverIdOrderByCreateDateDesc(1L)).thenReturn(List.of(
+                notificationOf("TAG", 100L),
+                notificationOf("LIKE", 100L),
+                notificationOf("GROUP_MOTTO", 100L)));
+        when(quoteRepository.findAllById(anyIterable())).thenReturn(List.of(quote));
+
+        List<NotificationResponse> result = notificationService.findMyNotifications(1L, null);
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(0).quoteDate()).isEqualTo("2026-10-01");
+        assertThat(result.get(1).quoteDate()).isNull();
+        assertThat(result.get(2).quoteDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("성공: 대상 명언이 없는 TAG 계열 알림은 목록에서 제외된다")
+    void findMyNotifications_tagNotificationWithMissingQuote_isExcluded() {
+        when(notificationRepository.findByReceiverIdOrderByCreateDateDesc(1L)).thenReturn(List.of(
+                notificationOf("TAG", 999L),
+                notificationOf("POKE", 2L)));
+        when(quoteRepository.findAllById(anyIterable())).thenReturn(List.of());
+
+        List<NotificationResponse> result = notificationService.findMyNotifications(1L, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).type()).isEqualTo("POKE");
+    }
+
+    @Test
+    @DisplayName("성공: TAG 계열 알림이 없으면 명언을 조회하지 않는다")
+    void findMyNotifications_withoutTagNotifications_doesNotQueryQuotes() {
+        when(notificationRepository.findByReceiverIdOrderByCreateDateDesc(1L))
+                .thenReturn(List.of(notificationOf("POKE", 2L)));
+
+        notificationService.findMyNotifications(1L, null);
+
+        verify(quoteRepository, never()).findAllById(any());
+    }
+
+    @Test
+    @DisplayName("성공: GROUP 카테고리 조회에 가입 요청 알림이 포함된다")
+    void findMyNotifications_groupCategory_includesJoinRequestType() {
+        when(notificationRepository.findByReceiverIdAndTypeInOrderByCreateDateDesc(
+                eq(1L), argThat((Collection<String> types) -> types.contains("GROUP_JOIN_REQUEST"))))
+                .thenReturn(List.of(notificationOf("GROUP_JOIN_REQUEST", 10L)));
+
+        List<NotificationResponse> result = notificationService.findMyNotifications(1L, "GROUP");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).type()).isEqualTo("GROUP_JOIN_REQUEST");
+        assertThat(result.get(0).quoteDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("성공: 그룹 알림을 끈 수신자에게는 가입 요청 알림이 저장되지 않는다")
+    void create_groupJoinRequest_respectsGroupSetting() {
+        NotificationSetting off = NotificationSetting.builder().member(receiver).groupEnabled(false).build();
+        when(notificationSettingRepository.findByMember(receiver)).thenReturn(Optional.of(off));
+
+        notificationService.create(receiver, sender, "GROUP_JOIN_REQUEST", "메시지", 10L);
+
+        verify(notificationRepository, never()).save(any());
     }
 }

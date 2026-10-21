@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.YearMonth;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -268,11 +269,27 @@ public class QuoteService {
     }
 
     // 아카이브 조회
-
-    public List<QuoteResponse> findMyQuotes(Long memberId) {
-        return quoteRepository.findAllByAuthorId(memberId).stream()
+    public List<QuoteResponse> findMyQuotes(Long memberId, YearMonth month) {
+        return findMyQuoteEntities(memberId, month).stream()
                 .map(QuoteResponse::new)
                 .collect(Collectors.toList());
+    }
+
+    public List<LocalDate> findMyQuoteDates(Long memberId, YearMonth month) {
+        return findMyQuoteEntities(memberId, month).stream()
+                .map(quote -> quote.getCreateDate().toLocalDate())
+                .distinct()
+                .toList();
+    }
+
+    private List<Quote> findMyQuoteEntities(Long memberId, YearMonth month) {
+        if (month == null) {
+            return quoteRepository.findAllByAuthorIdOrderByCreateDateDesc(memberId);
+        }
+        LocalDateTime monthStart = month.atDay(1).atStartOfDay();
+        LocalDateTime nextMonthStart = month.plusMonths(1).atDay(1).atStartOfDay();
+        return quoteRepository.findAllByAuthorIdAndCreateDateGreaterThanEqualAndCreateDateLessThanOrderByCreateDateDesc(
+                memberId, monthStart, nextMonthStart);
     }
 
     public List<QuoteResponse> findLikedQuotes(Long memberId) {

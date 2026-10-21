@@ -238,4 +238,38 @@ class GroupServiceTest {
         assertThat(notificationRepository
                 .findByReceiverIdAndTypeOrderByCreateDateDesc(leader.getId(), "GROUP_MOTTO")).isEmpty();
     }
+
+    @Test
+    void requestToJoin_createsNotificationForLeader() {
+        groupService.requestToJoin(invitee1, group.getId());
+
+        List<Notification> received = notificationRepository
+                .findByReceiverIdAndTypeOrderByCreateDateDesc(leader.getId(), "GROUP_JOIN_REQUEST");
+
+        assertThat(received).hasSize(1);
+        Notification notification = received.get(0);
+        assertThat(notification.getSender().getId()).isEqualTo(invitee1.getId());
+        assertThat(notification.getTargetId()).isEqualTo(group.getId());
+        assertThat(notification.getMessage()).contains(invitee1.getNickname()).contains(group.getName());
+        assertThat(groupService.getJoinRequests(leader, group.getId())).hasSize(1);
+    }
+
+    @Test
+    void requestToJoin_isAllowedWhenPendingInviteExists() {
+        groupJoinRequestRepository.save(
+                GroupJoinRequest.builder().group(group).inviter(leader).requester(invitee1).status(JoinStatus.PENDING).type(InviteType.INVITE).build());
+
+        groupService.requestToJoin(invitee1, group.getId());
+
+        assertThat(groupService.getJoinRequests(leader, group.getId()))
+                .extracting(GroupJoinRequestResponse::requesterId)
+                .containsExactly(invitee1.getId());
+    }
+
+    @Test
+    void requestToJoin_rejectsDuplicatePendingJoinRequest() {
+        groupService.requestToJoin(invitee1, group.getId());
+
+        assertThrows(GlobalException.class, () -> groupService.requestToJoin(invitee1, group.getId()));
+    }
 }

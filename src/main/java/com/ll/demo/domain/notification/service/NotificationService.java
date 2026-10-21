@@ -8,33 +8,44 @@ import com.ll.demo.domain.notification.entity.Notification;
 import com.ll.demo.domain.notification.entity.NotificationSetting;
 import com.ll.demo.domain.notification.repository.NotificationRepository;
 import com.ll.demo.domain.notification.repository.NotificationSettingRepository;
+import com.ll.demo.domain.quote.entity.Quote;
+import com.ll.demo.domain.quote.repository.QuoteRepository;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class NotificationService {
+
     private final NotificationRepository notificationRepository;
     private final NotificationSettingRepository notificationSettingRepository;
+    private final QuoteRepository quoteRepository;
 
     // 알림 타입 → 카테고리 매핑
     private static final Map<String, List<String>> CATEGORY_TYPES = Map.of(
-            "GROUP",  List.of("GROUP_INVITE", "GROUP_ACCEPT", "GROUP_REJECT", "GROUP_LEAVE", "GROUP_MOTTO"),
+            "GROUP",  List.of("GROUP_INVITE", "GROUP_JOIN_REQUEST", "GROUP_ACCEPT", "GROUP_REJECT", "GROUP_LEAVE", "GROUP_MOTTO"),
             "FRIEND", List.of("FRIEND_REQUEST", "FRIEND_ACCEPTED", "FRIEND_REJECTED", "POKE"),
             "TAG",    List.of("TAG", "TAG_REQUEST", "TAG_ACCEPTED")
     );
 
+    private static final Set<String> TAG_TYPES = Set.copyOf(CATEGORY_TYPES.get("TAG"));
+
     // 알림 타입 → 설정 카테고리 매핑
     private boolean isEnabled(NotificationSetting setting, String type) {
         return switch (type) {
-            case "GROUP_INVITE", "GROUP_ACCEPT", "GROUP_REJECT", "GROUP_LEAVE", "GROUP_MOTTO" -> setting.isGroupEnabled();
+            case "GROUP_INVITE", "GROUP_JOIN_REQUEST", "GROUP_ACCEPT", "GROUP_REJECT", "GROUP_LEAVE", "GROUP_MOTTO" -> setting.isGroupEnabled();
             case "TAG", "TAG_REQUEST", "TAG_ACCEPTED" -> setting.isTagEnabled();
             case "POKE" -> setting.isPokeEnabled();
             case "LIKE" -> setting.isLikeEnabled();
@@ -79,11 +90,32 @@ public class NotificationService {
             notifications = notificationRepository.findByReceiverIdAndTypeOrderByCreateDateDesc(memberId, category);
         }
 
+        Map<Long, LocalDate> quoteDates = findQuoteDates(notifications);
+
         return notifications.stream()
-                .map(NotificationResponse::new)
+                .filter(n -> !isTagType(n) || (n.getTargetId() != null && quoteDates.containsKey(n.getTargetId())))
+                .map(n -> new NotificationResponse(n, isTagType(n) ? quoteDates.get(n.getTargetId()) : null))
                 .toList();
     }
 
+    private static boolean isTagType(Notification notification) {
+        return notification.getType() != null && TAG_TYPES.contains(notification.getType());
+    }
+
+    private Map<Long, LocalDate> findQuoteDates(List<Notification> notifications) {
+        Set<Long> quoteIds = notifications.stream()
+                .filter(n -> isTagType(n) && n.getTargetId() != null)
+                .map(Notification::getTargetId)
+                .collect(Collectors.toSet());
+
+        if (quoteIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return quoteRepository.findAllById(quoteIds).stream()
+                .collect(Collectors.toMap(Quote::getId, quote -> quote.getCreateDate().toLocalDate()));
+    }
+    
     @Transactional
     public void markAsRead(Long receiverId, Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)

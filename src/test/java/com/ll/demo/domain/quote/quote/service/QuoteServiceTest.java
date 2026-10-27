@@ -11,6 +11,7 @@ import com.ll.demo.domain.quote.dto.QuoteDetailResponse;
 import com.ll.demo.domain.quote.dto.QuoteListDto;
 import com.ll.demo.domain.quote.dto.QuoteResponse;
 import com.ll.demo.domain.quote.entity.Quote;
+import com.ll.demo.domain.quote.entity.QuoteTag;
 import com.ll.demo.domain.quote.entity.QuoteTagRequest;
 import com.ll.demo.domain.quote.entity.TagRequestStatus;
 import com.ll.demo.domain.quote.repository.BookmarkRepository;
@@ -437,8 +438,8 @@ class QuoteServiceTest {
     }
 
     @Test
-    @DisplayName("비회원이 groupId로 접근해도 현재 구현은 에러를 던지지 않음(멤버 체크 없음)")
-    void getQuoteList_NonMemberAccess_AllowsAccessByDesign() {
+    @DisplayName("실패: 그룹 멤버가 아니면 groupId 조회는 403이고 명언을 조회하지 않는다")
+    void getQuoteList_NonMemberAccess_Forbidden() {
         LocalDate testDate = LocalDate.of(2024, 5, 20);
 
         com.ll.demo.domain.group.group.entity.Group group = com.ll.demo.domain.group.group.entity.Group.builder().name("g").build();
@@ -452,11 +453,31 @@ class QuoteServiceTest {
 
         when(groupRepository.findById(50L)).thenReturn(Optional.of(group));
         when(groupMemberRepository.findByGroup(group)).thenReturn(List.of(gmB, gmC));
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of());
 
-        // sender (id=1) is not in group members; service should still return result without throwing
-        QuoteListDto result = quoteService.getQuoteList(sender, testDate, 50L);
-        assertThat(result.unwrittenMembers()).hasSize(2);
+        GlobalException ex = assertThrows(GlobalException.class, () -> quoteService.getQuoteList(sender, testDate, 50L));
+
+        assertThat(ex.getRsData().getStatusCode()).isEqualTo(403);
+        verify(quoteRepository, never()).findAllByDateRange(any(), any());
+    }
+
+    @Test
+    @DisplayName("성공: 그룹 리더는 groupId로 그룹 멤버 명언을 조회할 수 있다")
+    void getQuoteList_GroupLeader_Allowed() {
+        LocalDate testDate = LocalDate.of(2024, 5, 20);
+
+        Group group = Group.builder().name("g").leader(sender).build();
+        ReflectionTestUtils.setField(group, "id", 60L);
+
+        when(groupRepository.findById(60L)).thenReturn(Optional.of(group));
+        when(groupMemberRepository.findByGroup(group))
+                .thenReturn(List.of(new GroupMember(group, sender), new GroupMember(group, author)));
+        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of(testQuote));
+
+        QuoteListDto result = quoteService.getQuoteList(sender, testDate, 60L);
+
+        assertThat(result.otherQuotes()).hasSize(1);
+        assertThat(result.otherQuotes().get(0).id()).isEqualTo(100L);
+        assertThat(result.unwrittenMembers()).isEmpty();
     }
 
     @Test
@@ -619,5 +640,161 @@ class QuoteServiceTest {
         List<LocalDate> result = quoteService.findMyQuoteDates(sender.getId(), YearMonth.of(2026, 9));
 
         assertThat(result).containsExactly(LocalDate.of(2026, 9, 20), LocalDate.of(2026, 9, 3));
+    }
+
+    private final Member tagA = tagMember(11L, "A");
+    private final Member tagB = tagMember(12L, "B");
+    private final Member tagC = tagMember(13L, "C");
+
+    private static Member tagMember(Long id, String nickname) {
+        Member member = Member.builder().nickname(nickname).build();
+        ReflectionTestUtils.setField(member, "id", id);
+        return member;
+    }
+
+    private void givenExistingTags(Member... members) {
+        when(quoteRepository.findById(100L)).thenReturn(Optional.of(testQuote));
+        when(quoteTagRepository.findAllByQuote(testQuote)).thenReturn(
+                java.util.Arrays.stream(members).map(m -> new QuoteTag(testQuote, m)).toList());
+    }
+
+    private void givenMembers(Member... members) {
+        for (Member member : members) {
+            when(memberRepository.findById(member.getId())).thenReturn(Optional.of(member));
+        }
+    }
+
+    private List<Long> savedTagMemberIds(int expectedSaveCount) {
+        ArgumentCaptor<QuoteTag> captor = ArgumentCaptor.forClass(QuoteTag.class);
+        verify(quoteTagRepository, times(expectedSaveCount)).save(captor.capture());
+        return captor.getAllValues().stream().map(qt -> qt.getMember().getId()).toList();
+    }
+
+    private void verifyTagNotifiedOnlyTo(Member receiver) {
+        verify(notificationService, times(1)).create(any(), any(), any(), any(), any());
+        verify(notificationService).create(eq(receiver), eq(author), eq("TAG"), anyString(), eq(100L));
+    }
+
+    @Test
+    @DisplayName("태그 수정: 기존 태그를 그대로 재저장하면 알림을 보내지 않는다")
+    void updateTags_sameTags_noNotification() {
+        givenExistingTags(tagA, tagB);
+        givenMembers(tagA, tagB);
+
+        quoteService.updateTags(2L, 100L, List.of(11L, 12L));
+
+        assertThat(savedTagMemberIds(2)).containsExactly(11L, 12L);
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("태그 수정: 새로 추가된 사용자에게만 알림을 보낸다")
+    void updateTags_addedMember_notifiesOnlyAdded() {
+        givenExistingTags(tagA, tagB);
+        givenMembers(tagA, tagB, tagC);
+
+        quoteService.updateTags(2L, 100L, List.of(11L, 12L, 13L));
+
+        assertThat(savedTagMemberIds(3)).containsExactly(11L, 12L, 13L);
+        verifyTagNotifiedOnlyTo(tagC);
+    }
+
+    @Test
+    @DisplayName("태그 수정: 태그를 제거만 하면 알림을 보내지 않는다")
+    void updateTags_removedMember_noNotification() {
+        givenExistingTags(tagA, tagB);
+        givenMembers(tagA);
+
+        quoteService.updateTags(2L, 100L, List.of(11L));
+
+        assertThat(savedTagMemberIds(1)).containsExactly(11L);
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("태그 수정: 일부 교체 시 새로 추가된 사용자에게만 알림을 보낸다")
+    void updateTags_replacedMember_notifiesOnlyAdded() {
+        givenExistingTags(tagA, tagB);
+        givenMembers(tagB, tagC);
+
+        quoteService.updateTags(2L, 100L, List.of(12L, 13L));
+
+        assertThat(savedTagMemberIds(2)).containsExactly(12L, 13L);
+        verify(quoteTagRepository).deleteAllByQuote(testQuote);
+        verifyTagNotifiedOnlyTo(tagC);
+    }
+
+    @Test
+    @DisplayName("태그 수정: 빈 목록이면 모든 태그를 제거하고 알림을 보내지 않는다")
+    void updateTags_emptyList_removesAllWithoutNotification() {
+        givenExistingTags(tagA, tagB);
+
+        quoteService.updateTags(2L, 100L, List.of());
+
+        verify(quoteTagRepository).deleteAllByQuote(testQuote);
+        assertThat(savedTagMemberIds(0)).isEmpty();
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("태그 수정: null이면 모든 태그를 제거하고 알림을 보내지 않는다")
+    void updateTags_null_removesAllWithoutNotification() {
+        givenExistingTags(tagA, tagB);
+
+        quoteService.updateTags(2L, 100L, null);
+
+        verify(quoteTagRepository).deleteAllByQuote(testQuote);
+        assertThat(savedTagMemberIds(0)).isEmpty();
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("태그 수정: 요청에 같은 ID가 중복되어도 태그와 알림은 한 번만 생성된다")
+    void updateTags_duplicateIds_savesAndNotifiesOnce() {
+        givenExistingTags();
+        givenMembers(tagC);
+
+        quoteService.updateTags(2L, 100L, List.of(13L, 13L));
+
+        assertThat(savedTagMemberIds(1)).containsExactly(13L);
+        verifyTagNotifiedOnlyTo(tagC);
+    }
+
+    @Test
+    @DisplayName("태그 수정: 작성자가 아니면 403이고 태그와 알림을 변경하지 않는다")
+    void updateTags_notAuthor_forbidden() {
+        when(quoteRepository.findById(100L)).thenReturn(Optional.of(testQuote));
+
+        GlobalException ex = assertThrows(GlobalException.class,
+                () -> quoteService.updateTags(1L, 100L, List.of(11L)));
+
+        assertThat(ex.getRsData().getStatusCode()).isEqualTo(403);
+        verify(quoteTagRepository, never()).deleteAllByQuote(any());
+        verify(quoteTagRepository, never()).save(any());
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("태그 수정: 명언이 없으면 404")
+    void updateTags_quoteNotFound_throws404() {
+        when(quoteRepository.findById(100L)).thenReturn(Optional.empty());
+
+        GlobalException ex = assertThrows(GlobalException.class,
+                () -> quoteService.updateTags(2L, 100L, List.of(11L)));
+
+        assertThat(ex.getRsData().getStatusCode()).isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("태그 수정: 존재하지 않는 회원 ID면 404")
+    void updateTags_memberNotFound_throws404() {
+        givenExistingTags();
+        when(memberRepository.findById(99L)).thenReturn(Optional.empty());
+
+        GlobalException ex = assertThrows(GlobalException.class,
+                () -> quoteService.updateTags(2L, 100L, List.of(99L)));
+
+        assertThat(ex.getRsData().getStatusCode()).isEqualTo(404);
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
     }
 }

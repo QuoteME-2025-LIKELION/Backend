@@ -193,6 +193,26 @@ public class QuoteService {
     }
 
     public QuoteListDto getQuoteList(Member currentUser, LocalDate date, Long groupId) {
+        // 다른 사람 명언 (그룹 필터 or 친구 필터)
+        List<Member> targetMembers;
+        if (groupId != null) {
+            Group group = groupRepository.findById(groupId)
+                    .orElseThrow(() -> new GlobalException("404", "그룹을 찾을 수 없습니다."));
+            List<Member> groupMembers = groupMemberRepository.findByGroup(group).stream()
+                    .map(GroupMember::getMember)
+                    .toList();
+            if (groupMembers.stream().noneMatch(m -> m.getId().equals(currentUser.getId()))) {
+                throw new GlobalException("403", "그룹 멤버가 아닙니다.");
+            }
+            targetMembers = groupMembers.stream()
+                    .filter(m -> !m.getId().equals(currentUser.getId()))
+                    .toList();
+        } else {
+            targetMembers = friendshipRepository.findAllByMemberAndStatus(currentUser, FriendshipStatus.ACCEPTED).stream()
+                    .map(Friendship::getFriend)
+                    .toList();
+        }
+
         LocalDateTime startDate = date.atStartOfDay();
         LocalDateTime endDate = date.plusDays(1).atStartOfDay();
 
@@ -203,21 +223,6 @@ public class QuoteService {
                 .filter(q -> q.getAuthor().getId().equals(currentUser.getId()))
                 .map(q -> MyQuoteResponse.from(q, getQuoteGroupName(q)))
                 .toList();
-
-        // 다른 사람 명언 (그룹 필터 or 친구 필터)
-        List<Member> targetMembers;
-        if (groupId != null) {
-            Group group = groupRepository.findById(groupId)
-                    .orElseThrow(() -> new GlobalException("404", "그룹을 찾을 수 없습니다."));
-            targetMembers = groupMemberRepository.findByGroup(group).stream()
-                    .map(GroupMember::getMember)
-                    .filter(m -> !m.getId().equals(currentUser.getId()))
-                    .toList();
-        } else {
-            targetMembers = friendshipRepository.findAllByMemberAndStatus(currentUser, FriendshipStatus.ACCEPTED).stream()
-                    .map(Friendship::getFriend)
-                    .toList();
-        }
 
         List<QuoteDetailResponse> otherQuotes = quotes.stream()
                 .filter(q -> !q.getAuthor().getId().equals(currentUser.getId()))
@@ -348,28 +353,34 @@ public class QuoteService {
     @Transactional
     public void updateTags(Long authorId, Long quoteId, List<Long> taggedMemberIds) {
         Quote quote = quoteRepository.findById(quoteId)
-                .orElseThrow(() -> new RuntimeException("명언을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "명언을 찾을 수 없습니다."));
 
         if (!quote.getAuthor().getId().equals(authorId)) {
-            throw new RuntimeException("수정 권한이 없습니다.");
+            throw new GlobalException("403", "수정 권한이 없습니다.");
         }
+
+        Set<Long> previousTaggedMemberIds = quoteTagRepository.findAllByQuote(quote).stream()
+                .map(qt -> qt.getMember().getId())
+                .collect(Collectors.toSet());
 
         quoteTagRepository.deleteAllByQuote(quote);
 
         if (taggedMemberIds != null && !taggedMemberIds.isEmpty()) {
-            for (Long memberId : taggedMemberIds) {
+            for (Long memberId : taggedMemberIds.stream().distinct().toList()) {
                 Member taggedMember = memberRepository.findById(memberId)
-                        .orElseThrow(() -> new RuntimeException("존재하지 않는 회원입니다."));
+                        .orElseThrow(() -> new GlobalException("404", "존재하지 않는 회원입니다."));
 
                 quoteTagRepository.save(new QuoteTag(quote, taggedMember));
 
-                notificationService.create(
-                        taggedMember,
-                        quote.getAuthor(),
-                        "TAG",
-                        quote.getAuthor().getName() + "님이 글에 태그했습니다.",
-                        quote.getId()
-                );
+                if (!previousTaggedMemberIds.contains(memberId)) {
+                    notificationService.create(
+                            taggedMember,
+                            quote.getAuthor(),
+                            "TAG",
+                            quote.getAuthor().getName() + "님이 글에 태그했습니다.",
+                            quote.getId()
+                    );
+                }
             }
         }
     }

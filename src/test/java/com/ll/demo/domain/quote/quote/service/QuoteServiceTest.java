@@ -204,12 +204,14 @@ class QuoteServiceTest {
                         .status(com.ll.demo.domain.friendship.friendship.type.FriendshipStatus.ACCEPTED)
                         .build()
         ));
+        when(bookmarkRepository.existsByMemberAndQuote(sender, myQuote)).thenReturn(true);
         when(bookmarkRepository.existsByMemberAndQuote(sender, friendQuote)).thenReturn(false);
 
         QuoteListDto result = quoteService.getQuoteList(sender, testDate, null);
 
         assertThat(result.myQuotes()).hasSize(1);
         assertThat(result.myQuotes().get(0).id()).isEqualTo(10L);
+        assertThat(result.myQuotes().get(0).isBookmarked()).isTrue();
 
         assertThat(result.otherQuotes()).hasSize(1);
         QuoteDetailResponse other = result.otherQuotes().get(0);

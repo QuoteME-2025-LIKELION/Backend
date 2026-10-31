@@ -221,7 +221,10 @@ public class QuoteService {
         // 내 명언
         List<MyQuoteResponse> myQuotes = quotes.stream()
                 .filter(q -> q.getAuthor().getId().equals(currentUser.getId()))
-                .map(q -> MyQuoteResponse.from(q, getQuoteGroupName(q)))
+                .map(q -> MyQuoteResponse.from(
+                        q,
+                        getQuoteGroupName(q),
+                        bookmarkRepository.existsByMemberAndQuote(currentUser, q)))
                 .toList();
 
         List<QuoteDetailResponse> otherQuotes = quotes.stream()

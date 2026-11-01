@@ -50,6 +50,9 @@ import org.springframework.security.oauth2.core.OAuth2Error;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MemberService {
+    private static final int AI_DAILY_LIMIT = 3;
+    private static final String AI_LIMIT_MESSAGE = "AI 추천은 하루 3회까지만 사용할 수 있습니다.";
+
 
     private static final int NICKNAME_MAX_LENGTH = 10;
     public static final String SOCIAL_ACCOUNT_NOT_FOUND = "account_not_found";
@@ -241,22 +244,19 @@ public class MemberService {
         }
     }
 
-    // AI 추천 횟수 체크 + 증가 (일 3회 제한, 날짜 바뀌면 초기화)
+    // AI 추천 잔여 횟수 확인 (일 3회 제한, 차감은 하지 않음)
+    public void checkAiUsageAvailable(Member member) {
+        if (LocalDate.now().equals(member.getAiUsageDate()) && member.getAiUsageCount() >= AI_DAILY_LIMIT) {
+            throw new GlobalException("429-1", AI_LIMIT_MESSAGE);
+        }
+    }
+
+    // AI 추천 성공 후 횟수 차감 (날짜 바뀌면 초기화, 동시 요청은 조건부 UPDATE로 한도 보장)
     @Transactional
-    public void checkAndIncrementAiUsage(Member member) {
-        LocalDate today = LocalDate.now();
-
-        if (!today.equals(member.getAiUsageDate())) {
-            member.setAiUsageDate(today);
-            member.setAiUsageCount(0);
+    public void incrementAiUsage(Long memberId) {
+        if (memberRepository.incrementAiUsage(memberId, LocalDate.now(), AI_DAILY_LIMIT) == 0) {
+            throw new GlobalException("429-1", AI_LIMIT_MESSAGE);
         }
-
-        if (member.getAiUsageCount() >= 3) {
-            throw new GlobalException("429-1", "AI 추천은 하루 3회까지만 사용할 수 있습니다.");
-        }
-
-        member.setAiUsageCount(member.getAiUsageCount() + 1);
-        memberRepository.save(member);
     }
 
     // 소셜 로그인: 기존 회원 조회 or 신규 생성

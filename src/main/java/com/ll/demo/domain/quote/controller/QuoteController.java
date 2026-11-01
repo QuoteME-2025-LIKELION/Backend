@@ -56,8 +56,12 @@ public class QuoteController {
     ) {
         // 일기 유효성 검사 (15자 이하 / 불량 텍스트 거부)
         quoteService.validateDiaryContent(req.content());
-        memberService.checkAndIncrementAiUsage(user.getMember());
-        return ResponseEntity.ok(new QuoteSummarizeResponse(geminiService.summarizeThree(req.content())));
+        memberService.checkAiUsageAvailable(user.getMember());
+        List<String> summaries = geminiService.summarizeThree(req.content());
+        if (!summaries.isEmpty()) {
+            memberService.incrementAiUsage(user.getMember().getId());
+        }
+        return ResponseEntity.ok(new QuoteSummarizeResponse(summaries));
     }
 
     // AI 사용량 조회 (하루 3회 제한)

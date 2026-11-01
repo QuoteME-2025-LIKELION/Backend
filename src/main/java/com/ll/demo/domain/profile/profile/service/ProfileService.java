@@ -23,6 +23,7 @@ import com.ll.demo.domain.profile.profile.dto.ProfileResponse;
 import com.ll.demo.domain.profile.profile.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.profile.profile.dto.AccountUpdateRequest;
 import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
+import com.ll.demo.global.aws.S3Service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -50,6 +51,7 @@ public class ProfileService {
     private final BookmarkRepository bookmarkRepository;
     private final PokeRepository pokeRepository;
     private final MemberSocialAccountRepository memberSocialAccountRepository;
+    private final S3Service s3Service;
 
     // 프로필 정보 조회
     @Transactional(readOnly = true)
@@ -62,6 +64,13 @@ public class ProfileService {
     public void validateNotGuest(Member member) {
         if (GUEST_EMAIL.equals(member.getEmail())) {
             throw new GlobalException("403", "게스트 계정은 수정할 수 없습니다.");
+        }
+    }
+
+    // JSON으로 받는 이미지는 빈 문자열(제거) 또는 우리 버킷 URL만 허용
+    private void validateProfileImageValue(String profileImage) {
+        if (!profileImage.isEmpty() && !profileImage.startsWith(s3Service.profileUrlPrefix())) {
+            throw new GlobalException("400", "프로필 이미지 주소가 올바르지 않습니다.");
         }
     }
 
@@ -88,6 +97,7 @@ public class ProfileService {
         if (imageUrl != null && !imageUrl.isBlank()) {
             persistentMember.setProfileImage(imageUrl);
         } else if (request != null && request.profileImage() != null) {
+            validateProfileImageValue(request.profileImage());
             persistentMember.setProfileImage(request.profileImage());
         }
 

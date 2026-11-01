@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Value;
 @RequiredArgsConstructor
 public class S3Service {
 
+    private static final String PROFILE_KEY_PREFIX = "profile/";
+
     // SVG는 스크립트를 담을 수 있어 제외
     private static final Map<String, String> IMAGE_EXTENSIONS = Map.of(
             "image/jpeg", "jpg",
@@ -31,15 +33,15 @@ public class S3Service {
 
     // 프로필 이미지 읽어오기 : 이미지 S3 객체 Key-Bucket Policy의 Resource 경로 일치하게 수정
     public String uploadFile(MultipartFile file) throws IOException {
-        String uniqueFilename = "profile/" + UUID.randomUUID() + "." + imageExtension(file.getContentType());
+        String fileName = UUID.randomUUID() + "." + imageExtension(file.getContentType());
 
-        s3Template.upload(bucket, uniqueFilename, file.getInputStream());
+        s3Template.upload(bucket, PROFILE_KEY_PREFIX + fileName, file.getInputStream());
 
-        return String.format(
-                "https://%s.s3.ap-northeast-2.amazonaws.com/%s",
-                bucket,
-                uniqueFilename
-        );
+        return profileUrlPrefix() + fileName;
+    }
+
+    public String profileUrlPrefix() {
+        return "https://%s.s3.ap-northeast-2.amazonaws.com/%s".formatted(bucket, PROFILE_KEY_PREFIX);
     }
 
     private String imageExtension(String contentType) {

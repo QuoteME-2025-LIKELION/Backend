@@ -93,7 +93,13 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
             long id = Long.parseLong(accessTokenData.get("id").toString());
 
             // 1. DB에서 실제 회원 조회 (SecurityUser에는 Member 객체가 통째로 필요함)
-            Member member = (Member) memberService.findById(id).orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
+            Member member = memberService.findById(id).orElse(null);
+
+            // 탈퇴 회원의 토큰이면 인증 없이 통과시켜 미인증(403-1)으로 응답
+            if (member == null) {
+                filterChain.doFilter(req, response);
+                return;
+            }
 
             // 2. SecurityUser 생성 (VIP 티켓 발급)
             // (비밀번호는 공란 "", 권한은 member.getAuthorities() 사용)

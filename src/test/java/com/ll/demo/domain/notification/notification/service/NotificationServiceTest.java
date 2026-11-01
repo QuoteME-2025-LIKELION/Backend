@@ -76,6 +76,7 @@ class NotificationServiceTest {
 
         when(notificationRepository.findByReceiverIdOrderByCreateDateDesc(1L))
                 .thenReturn(List.of(pokeNote, likeNote));
+        when(quoteRepository.findAllById(anyIterable())).thenReturn(List.of(quoteOf(100L, java.time.LocalDateTime.now())));
 
         // when
         List<NotificationResponse> result = notificationService.findMyNotifications(1L, null);
@@ -309,6 +310,21 @@ class NotificationServiceTest {
         assertThat(result.get(0).quoteDate()).isEqualTo("2026-10-01");
         assertThat(result.get(1).quoteDate()).isNull();
         assertThat(result.get(2).quoteDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("성공: 대상 명언이 없는 LIKE 알림도 같은 일괄 조회로 제외된다")
+    void findMyNotifications_likeWithMissingQuote_isExcludedWithSingleQuery() {
+        when(notificationRepository.findByReceiverIdOrderByCreateDateDesc(1L)).thenReturn(List.of(
+                notificationOf("TAG", 100L),
+                notificationOf("LIKE", 100L),
+                notificationOf("LIKE", 200L)));
+        when(quoteRepository.findAllById(anyIterable())).thenReturn(List.of(quoteOf(100L, java.time.LocalDateTime.now())));
+
+        List<NotificationResponse> result = notificationService.findMyNotifications(1L, null);
+
+        assertThat(result).extracting(NotificationResponse::targetId).containsExactly(100L, 100L);
+        verify(quoteRepository, times(1)).findAllById(anyIterable());
     }
 
     @Test

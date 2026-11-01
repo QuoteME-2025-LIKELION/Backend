@@ -94,7 +94,7 @@ public class NotificationService {
         Map<Long, LocalDate> quoteDates = findQuoteDates(notifications);
 
         return notifications.stream()
-                .filter(n -> !isTagType(n) || (n.getTargetId() != null && quoteDates.containsKey(n.getTargetId())))
+                .filter(n -> !hasQuoteTarget(n) || (n.getTargetId() != null && quoteDates.containsKey(n.getTargetId())))
                 .map(n -> new NotificationResponse(n, isTagType(n) ? quoteDates.get(n.getTargetId()) : null))
                 .toList();
     }
@@ -103,9 +103,13 @@ public class NotificationService {
         return notification.getType() != null && TAG_TYPES.contains(notification.getType());
     }
 
+    private static boolean hasQuoteTarget(Notification notification) {
+        return isTagType(notification) || "LIKE".equals(notification.getType());
+    }
+
     private Map<Long, LocalDate> findQuoteDates(List<Notification> notifications) {
         Set<Long> quoteIds = notifications.stream()
-                .filter(n -> isTagType(n) && n.getTargetId() != null)
+                .filter(n -> hasQuoteTarget(n) && n.getTargetId() != null)
                 .map(Notification::getTargetId)
                 .collect(Collectors.toSet());
 

@@ -131,6 +131,7 @@ public class ProfileService {
 
         handleLedGroups(persistentMember);
 
+        notificationRepository.deleteAllTargetingQuotesOf(persistentMember);
         bookmarkRepository.deleteAllRelatedToMember(persistentMember);
         quoteLikeRepository.deleteAllRelatedToMember(persistentMember);
         quoteTagRepository.deleteAllRelatedToMember(persistentMember);
@@ -156,6 +157,7 @@ public class ProfileService {
             if (successor.isPresent()) {
                 group.setLeader(successor.get());
             } else {
+                notificationRepository.deleteAllTargetingGroup(group.getId());
                 groupRepository.delete(group);
             }
         }

@@ -37,6 +37,14 @@ class GeminiSummaryParsingTest {
     }
 
     @Test
+    @DisplayName("30자 기준은 코드포인트")
+    void lengthIsCodePoints() {
+        String thirtyEmoji = "😀".repeat(30);
+        assertThat(GeminiService.parseSummaries("[\"" + thirtyEmoji + "\", \"" + thirtyEmoji + "😀\"]"))
+                .containsExactly(thirtyEmoji);
+    }
+
+    @Test
     @DisplayName("JSON 배열이 아니면 빈 목록")
     void notAnArray() {
         assertThat(GeminiService.parseSummaries("죄송합니다, 생성할 수 없습니다.")).isEmpty();

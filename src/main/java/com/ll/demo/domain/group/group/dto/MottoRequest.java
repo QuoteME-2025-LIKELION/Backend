@@ -1,7 +1,7 @@
 package com.ll.demo.domain.group.group.dto;
 
-import jakarta.validation.constraints.Size;
+import com.ll.demo.global.validation.MaxChars;
 
 public record MottoRequest(
-        @Size(max = 20, message = "그룹 메시지는 20자 이하로 입력해주세요.") String motto
+        @MaxChars(value = 20, message = "그룹 메시지는 20자 이하로 입력해주세요.") String motto
 ) {}

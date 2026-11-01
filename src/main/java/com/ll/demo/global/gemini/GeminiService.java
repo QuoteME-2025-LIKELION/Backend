@@ -100,7 +100,7 @@ public class GeminiService {
         List<String> summaries = new ArrayList<>();
         for (JsonNode item : root) {
             String summary = item.isTextual() ? item.textValue().strip() : "";
-            if (!summary.isEmpty() && summary.length() <= MAX_SUMMARY_LENGTH) {
+            if (!summary.isEmpty() && summary.codePointCount(0, summary.length()) <= MAX_SUMMARY_LENGTH) {
                 summaries.add(summary);
             }
             if (summaries.size() == MAX_SUMMARIES) {

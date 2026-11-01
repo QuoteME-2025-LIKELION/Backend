@@ -55,7 +55,7 @@ public class QuoteService {
         if (content == null || content.isBlank()) {
             throw new GlobalException("400-1", "내용을 입력해주세요.");
         }
-        if (content.length() > 30) {
+        if (content.codePointCount(0, content.length()) > 30) {
             throw new GlobalException("400-2", "30자를 초과한 글은 게시할 수 없습니다.");
         }
         if (isLowQualityText(content)) {

@@ -526,30 +526,6 @@ public class QuoteService {
                 .collect(Collectors.toList());
     }
 
-    // 콕 찌르기
-
-    @Transactional
-    public void poke(Member sender, Long receiverId) {
-        Member receiver = memberRepository.findById(receiverId)
-                .orElseThrow(() -> new GlobalException("404", "대상 회원을 찾을 수 없습니다."));
-
-        if (sender.getId().equals(receiverId)) {
-            throw new GlobalException("400", "자기 자신은 콕 찌를 수 없습니다.");
-        }
-
-        notificationService.create(
-                receiver,
-                sender,
-                "POKE",
-                sender.getNickname() + "님이 당신을 콕 찔렀습니다!",
-                null
-        );
-    }
-
-    public long getPokeCount(Long memberId) {
-        return notificationService.countUnreadByType(memberId, "POKE");
-    }
-
     public PagedResponse<QuoteDetailResponse> getFeed(Long memberId, LocalDate date, Long groupId) {
         List<Long> authorIds;
         if (groupId != null) {

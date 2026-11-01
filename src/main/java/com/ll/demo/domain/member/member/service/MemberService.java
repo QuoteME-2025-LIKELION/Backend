@@ -11,8 +11,6 @@ import com.ll.demo.domain.group.group.repository.GroupRepository;
 import com.ll.demo.domain.member.member.dto.SocialLoginResult;
 import com.ll.demo.domain.member.member.dto.FriendResponse;
 import com.ll.demo.domain.member.member.dto.MemberSearchResponse;
-import com.ll.demo.domain.member.member.dto.ProfileResponse;
-import com.ll.demo.domain.member.member.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.member.member.dto.SearchCombinedResponse;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.entity.MemberSocialAccount;
@@ -124,36 +122,6 @@ public class MemberService {
 
     public Optional<Member> findById(long id) {
         return memberRepository.findById(id);
-    }
-
-    // 내 프로필 조회
-    public ProfileResponse getProfile(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
-
-        return ProfileResponse.of(member);
-    }
-
-    // 프로필 정보 수정
-
-    @Transactional
-    public void updateProfile(Long memberId, ProfileUpdateRequest request, String imageUrl) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
-
-        // 값이 있는 필드만 수정하도록 로직 수정
-        if (request != null) {
-            if (request.getNickname() != null && !request.getNickname().isBlank()) {
-                member.setNickname(request.getNickname());
-            }
-            if (request.getIntroduction() != null) {
-                member.setIntroduction(request.getIntroduction());
-            }
-        }
-
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            member.setProfileImage(imageUrl);
-        }
     }
 
     //    // 닉네임, 이메일, 그룹명으로 회원 검색

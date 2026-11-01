@@ -339,6 +339,9 @@ public class GroupService {
         if (!group.getLeader().getId().equals(leader.getId())) {
             throw new GlobalException("403", "권한이 없습니다.");
         }
+        if (joinReq.getStatus() != JoinStatus.PENDING || joinReq.getType() != InviteType.JOIN_REQUEST) {
+            throw new GlobalException("400-5", "처리할 수 없는 요청입니다.");
+        }
 
         if (!groupMemberRepository.existsByGroupAndMember(group, joinReq.getRequester())) {
             validateGroupCapacity(group);
@@ -365,8 +368,8 @@ public class GroupService {
         if (!group.getLeader().getId().equals(leader.getId())) {
             throw new GlobalException("403", "권한이 없습니다.");
         }
-        if (joinReq.getStatus() != JoinStatus.PENDING) {
-            throw new GlobalException("400", "처리할 수 없는 요청입니다.");
+        if (joinReq.getStatus() != JoinStatus.PENDING || joinReq.getType() != InviteType.JOIN_REQUEST) {
+            throw new GlobalException("400-5", "처리할 수 없는 요청입니다.");
         }
 
         joinReq.reject();

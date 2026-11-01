@@ -7,12 +7,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -24,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MemberProfileAccessTest {
 
     @Autowired private MockMvc mvc;
+    @Autowired @Qualifier("requestMappingHandlerMapping") private RequestMappingHandlerMapping handlerMapping;
     @Autowired private MemberRepository memberRepository;
     @Autowired private AuthTokenService authTokenService;
 
@@ -48,6 +53,16 @@ class MemberProfileAccessTest {
                 .andExpect(jsonPath("$.id").value(other.getId()))
                 .andExpect(jsonPath("$.nickname").value("남"))
                 .andExpect(jsonPath("$.email").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("GET /api/profile/{id} 가 핸들러 매핑에 실제로 등록되어 있음")
+    void profileById_isRegistered() {
+        boolean registered = handlerMapping.getHandlerMethods().keySet().stream()
+                .anyMatch(info -> info.getPatternValues().contains("/api/profile/{id}")
+                        && info.getMethodsCondition().getMethods().contains(RequestMethod.GET));
+
+        assertThat(registered).isTrue();
     }
 
     @Test

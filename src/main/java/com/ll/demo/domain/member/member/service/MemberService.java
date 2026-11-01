@@ -221,6 +221,17 @@ public class MemberService {
         return refreshToken;
     }
 
+    // 로그아웃: refresh 토큰 또는 인증된 회원 기준으로 저장된 refresh 토큰 제거
+    @Transactional
+    public void clearRefreshToken(String refreshToken, Long memberId) {
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            memberRepository.findByRefreshToken(refreshToken).ifPresent(m -> m.setRefreshToken(null));
+        }
+        if (memberId != null) {
+            memberRepository.findById(memberId).ifPresent(m -> m.setRefreshToken(null));
+        }
+    }
+
     // AI 추천 횟수 체크 + 증가 (일 3회 제한, 날짜 바뀌면 초기화)
     @Transactional
     public void checkAndIncrementAiUsage(Member member) {

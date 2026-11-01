@@ -7,6 +7,7 @@ import com.ll.demo.domain.profile.profile.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.profile.profile.service.ProfileService;
 import com.ll.demo.global.aws.S3Service;
 import com.ll.demo.global.security.SecurityUser;
+import com.ll.demo.standard.rq.Rq;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -23,6 +24,7 @@ import java.io.IOException;
 public class ProfileController {
     private final ProfileService profileService;
     private final S3Service s3Service;
+    private final Rq rq;
 
     // 내 프로필 조회
     @GetMapping("")
@@ -67,6 +69,8 @@ public class ProfileController {
             @AuthenticationPrincipal SecurityUser securityUser
     ) {
         profileService.deleteAccount(securityUser.getMember());
+        rq.deleteCookie("accessToken");
+        rq.deleteCookie("refreshToken");
         return ResponseEntity.ok("회원 탈퇴가 완료되었습니다.");
     }
 }

@@ -118,6 +118,7 @@ public class QuoteService {
                 Member taggedMember = memberRepository.findById(memberId)
                         .orElseThrow(() -> new GlobalException("404", "태그된 회원을 찾을 수 없습니다."));
 
+                validateTagTarget(author, taggedMember);
                 quoteTagRepository.save(new QuoteTag(quote, taggedMember));
 
                 notificationService.create(
@@ -392,6 +393,10 @@ public class QuoteService {
                 Member taggedMember = memberRepository.findById(memberId)
                         .orElseThrow(() -> new GlobalException("404", "존재하지 않는 회원입니다."));
 
+                // 태그 요청 수락으로 이미 태그된 회원은 친구가 아니어도 유지
+                if (!previousTaggedMemberIds.contains(memberId)) {
+                    validateTagTarget(quote.getAuthor(), taggedMember);
+                }
                 quoteTagRepository.save(new QuoteTag(quote, taggedMember));
 
                 if (!previousTaggedMemberIds.contains(memberId)) {
@@ -404,6 +409,16 @@ public class QuoteService {
                     );
                 }
             }
+        }
+    }
+
+    // 작성자의 수락된 친구만 태그 가능 (본인 제외)
+    private void validateTagTarget(Member author, Member target) {
+        if (author.getId().equals(target.getId())) {
+            throw new GlobalException("400", "본인은 태그할 수 없습니다.");
+        }
+        if (!friendshipRepository.existsByMemberAndFriendAndStatus(author, target, FriendshipStatus.ACCEPTED)) {
+            throw new GlobalException("400", "친구만 태그할 수 있습니다.");
         }
     }
 

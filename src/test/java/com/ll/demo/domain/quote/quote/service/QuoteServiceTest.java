@@ -655,6 +655,8 @@ class QuoteServiceTest {
     }
 
     private void givenExistingTags(Member... members) {
+        org.mockito.Mockito.lenient().when(friendshipRepository.existsByMemberAndFriendAndStatus(any(), any(), any()))
+                .thenReturn(true);
         when(quoteRepository.findById(100L)).thenReturn(Optional.of(testQuote));
         when(quoteTagRepository.findAllByQuote(testQuote)).thenReturn(
                 java.util.Arrays.stream(members).map(m -> new QuoteTag(testQuote, m)).toList());

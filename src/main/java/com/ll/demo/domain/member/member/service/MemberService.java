@@ -381,6 +381,7 @@ public class MemberService {
             for (Member friend : sunshines) {
                 makeFriendship(guest, friend);
             }
+            makeFriendship(jjang, kju);
 
             // 기존 그룹 생성 - saveAndFlush 이용하여 id 확정
             Group sunshineGroup = groupRepository.saveAndFlush(Group.builder()
@@ -451,9 +452,7 @@ public class MemberService {
 
             quoteTagRepository.save(new QuoteTag(q1, guest));
             quoteTagRepository.save(new QuoteTag(q2, kju));
-            quoteTagRepository.save(new QuoteTag(q2, jjang));
             quoteTagRepository.save(new QuoteTag(q2, guest));
-            quoteTagRepository.save(new QuoteTag(q3, haeoni));
             quoteTagRepository.save(new QuoteTag(q3, guest));
     }
 

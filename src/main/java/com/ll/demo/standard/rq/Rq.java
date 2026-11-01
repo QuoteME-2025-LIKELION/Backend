@@ -2,6 +2,7 @@ package com.ll.demo.standard.rq;
 
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
+import com.ll.demo.global.security.AuthTokenService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,6 +20,7 @@ public class Rq {
     private final HttpServletRequest request;
     private final HttpServletResponse response;
     private final MemberRepository memberRepository;
+    private final AuthTokenService authTokenService;
 
     private Member cachedMember = null;
     private boolean memberResolved = false;
@@ -30,13 +32,12 @@ public class Rq {
         memberResolved = true;
 
         String accessToken = getCookieValue("accessToken", null);
-        if (accessToken == null) {
+        if (accessToken == null || !authTokenService.validateToken(accessToken)) {
             return null;
         }
 
         try {
-            // 본인의 jwtUtil 토큰 추출 로직 적용 확인
-            Long memberId = 1L; // 임시 파싱 규격 (프로젝트 내 jwtUtil.getMemberIdFromToken(accessToken) 복구 사용)
+            Long memberId = Long.valueOf(authTokenService.getDataFrom(accessToken).get("id").toString());
             cachedMember = memberRepository.findById(memberId).orElse(null);
         } catch (Exception e) {
             cachedMember = null;

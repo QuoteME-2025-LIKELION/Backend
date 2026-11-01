@@ -282,8 +282,20 @@ public class QuoteService {
 
     // 아카이브 조회
     public List<QuoteResponse> findMyQuotes(Long memberId, YearMonth month) {
-        return findMyQuoteEntities(memberId, month).stream()
-                .map(QuoteResponse::new)
+        return toArchiveResponses(memberId, findMyQuoteEntities(memberId, month));
+    }
+
+    // 목록의 북마크 여부를 IN 쿼리 1회로 채움
+    private List<QuoteResponse> toArchiveResponses(Long memberId, List<Quote> quotes) {
+        if (quotes.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> quoteIds = quotes.stream().map(Quote::getId).toList();
+        Set<Long> bookmarkedIds = bookmarkRepository.findBookmarkedQuoteIds(memberId, quoteIds);
+
+        return quotes.stream()
+                .map(q -> new QuoteResponse(q, bookmarkedIds.contains(q.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -305,19 +317,15 @@ public class QuoteService {
     }
 
     public List<QuoteResponse> findLikedQuotes(Long memberId) {
-        return quoteRepository.findQuotesLikedByMember(memberId).stream()
-                .map(QuoteResponse::from)
-                .collect(Collectors.toList());
+        return toArchiveResponses(memberId, quoteRepository.findQuotesLikedByMember(memberId));
     }
 
     public List<QuoteResponse> findMyQuotesByDate(Long memberId, LocalDate date) {
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
-        return quoteRepository.findAllByAuthorIdAndCreateDateBetweenOrderByCreateDateDesc(memberId, startOfDay, endOfDay)
-                .stream()
-                .map(QuoteResponse::new)
-                .toList();
+        return toArchiveResponses(memberId,
+                quoteRepository.findAllByAuthorIdAndCreateDateBetweenOrderByCreateDateDesc(memberId, startOfDay, endOfDay));
     }
 
     // 북마크
@@ -350,9 +358,7 @@ public class QuoteService {
     }
 
     public List<QuoteResponse> findBookmarkedQuotes(Long memberId) {
-        return bookmarkRepository.findQuotesByMemberId(memberId).stream()
-                .map(QuoteResponse::from)
-                .collect(Collectors.toList());
+        return toArchiveResponses(memberId, bookmarkRepository.findQuotesByMemberId(memberId));
     }
 
     // 태그

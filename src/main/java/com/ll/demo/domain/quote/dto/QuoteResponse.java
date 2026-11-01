@@ -13,9 +13,14 @@ public record QuoteResponse(
         Integer authorBirthYear,
         List<String> taggedMemberNames,
         LocalDateTime createDate,
-        List<QuoteTagResponse> tags
+        List<QuoteTagResponse> tags,
+        boolean isBookmarked
 ) {
     public QuoteResponse(Quote quote) {
+        this(quote, false);
+    }
+
+    public QuoteResponse(Quote quote, boolean isBookmarked) {
         this(
                 quote.getId(),
                 quote.getContent(),
@@ -29,7 +34,8 @@ public record QuoteResponse(
                 quote.getCreateDate(),
                 quote.getQuoteTags().stream()
                                 .map(QuoteTagResponse::from)
-                                .toList()
+                                .toList(),
+                isBookmarked
         );
     }
 

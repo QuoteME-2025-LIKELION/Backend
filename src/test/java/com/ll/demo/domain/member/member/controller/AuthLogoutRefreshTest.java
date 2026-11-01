@@ -3,6 +3,7 @@ package com.ll.demo.domain.member.member.controller;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.member.member.service.MemberService;
+import com.ll.demo.global.security.AuthTokenService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ class AuthLogoutRefreshTest {
     @Autowired private MockMvc mvc;
     @Autowired private MemberRepository memberRepository;
     @Autowired private MemberService memberService;
+    @Autowired private AuthTokenService authTokenService;
 
     @Test
     @DisplayName("로그아웃 후 같은 refresh 토큰으로 재발급하면 401-3 (access 토큰 없이도 로그아웃 동작)")
@@ -47,5 +49,22 @@ class AuthLogoutRefreshTest {
         mvc.perform(post("/api/auth/refresh").cookie(new Cookie("refreshToken", refreshToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.startsWith("401-3")));
+    }
+
+    @Test
+    @DisplayName("만료된 access 토큰과 refresh 쿠키로 로그아웃해도 refresh 토큰이 무효화된다")
+    void logout_withExpiredAccessToken_invalidatesRefreshToken() throws Exception {
+        Member member = memberRepository.save(Member.builder()
+                .email("expired@test.com").nickname("만료").password("password123").build());
+        String refreshToken = memberService.genRefreshToken(member);
+        String expiredAccessToken = authTokenService.genToken(member, -60);
+
+        mvc.perform(post("/api/auth/logout")
+                        .cookie(new Cookie("accessToken", expiredAccessToken), new Cookie("refreshToken", refreshToken)))
+                .andExpect(status().isOk());
+
+        assertThat(memberRepository.findById(member.getId()).orElseThrow().getRefreshToken()).isNull();
+        mvc.perform(post("/api/auth/refresh").cookie(new Cookie("refreshToken", refreshToken)))
+                .andExpect(status().isUnauthorized());
     }
 }

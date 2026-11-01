@@ -107,13 +107,13 @@ class ArchiveControllerTest {
         Long memberId = 42L;
         SecurityUser securityUser = createSecurityUser(memberId);
 
-        when(quoteService.findBookmarkedQuotes(memberId)).thenReturn(List.of());
+        when(quoteService.findBookmarkedQuotes(memberId, null)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/archives/bookmarks")
                         .with(authenticatedAs(securityUser)))
                 .andExpect(status().isOk());
 
-        verify(quoteService).findBookmarkedQuotes(eq(memberId));
+        verify(quoteService).findBookmarkedQuotes(eq(memberId), isNull());
     }
     private static MappingJackson2HttpMessageConverter jsonConverter() {
         ObjectMapper objectMapper = new ObjectMapper()

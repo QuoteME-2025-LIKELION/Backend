@@ -167,13 +167,18 @@ public class MemberService {
 
     // 회원 및 그룹 검색
     public SearchCombinedResponse searchCombined(String keyword, Long currentMemberId) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return SearchCombinedResponse.builder().members(List.of()).groups(List.of()).build();
+        }
+        String likeKeyword = escapeLike(keyword);
+
         // 닉네임or이메일로 검색
         List<Member> membersByNicknameOrEmail = memberRepository
-                .searchMembersByNicknameOrEmailUsername(keyword);
+                .searchMembersByNicknameOrEmailUsername(likeKeyword);
 
         // 그룹명으로 그룹 멤버 검색
         List<Member> membersByGroupName = groupMemberRepository
-                .findMembersByGroupNameContaining(keyword);
+                .findMembersByGroupNameContaining(likeKeyword);
 
         Set<Member> combinedMembers = new HashSet<>(membersByNicknameOrEmail);
         combinedMembers.addAll(membersByGroupName);
@@ -182,7 +187,7 @@ public class MemberService {
                 .filter(m -> !m.getId().equals(currentMemberId))
                 .map(MemberSearchResponse::of)
                 .toList();
-        // 그룹 자체
+        // 그룹 자체 (파생 쿼리는 Spring Data가 LIKE 이스케이프를 처리)
         List<Group> groups = groupRepository.findByNameContainingIgnoreCase(keyword);
 
         List<GroupSearchResponse> groupResponses = groups.stream()
@@ -219,6 +224,10 @@ public class MemberService {
         // 강제로 DB반영
         memberRepository.saveAndFlush(member);
         return refreshToken;
+    }
+
+    private static String escapeLike(String keyword) {
+        return keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_");
     }
 
     // 로그아웃: refresh 토큰 또는 인증된 회원 기준으로 저장된 refresh 토큰 제거

@@ -19,9 +19,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     // 부분 검색
     @Query("""
         SELECT m FROM Member m 
-        WHERE LOWER(m.nickname) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(m.email) LIKE LOWER(CONCAT(:keyword, '@%')) 
-        OR LOWER(m.email) LIKE LOWER(CONCAT('%', :keyword, '@%'))
+        WHERE LOWER(m.nickname) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '!'
+        OR LOWER(m.email) LIKE LOWER(CONCAT(:keyword, '@%')) ESCAPE '!'
+        OR LOWER(m.email) LIKE LOWER(CONCAT('%', :keyword, '@%')) ESCAPE '!'
     """)
+    // keyword는 '!'로 LIKE 이스케이프(!, %, _)된 값이어야 함
     List<Member> searchMembersByNicknameOrEmailUsername(@Param("keyword") String keyword);
 }

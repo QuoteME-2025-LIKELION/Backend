@@ -32,6 +32,8 @@ public class OAuth2LoginModeFilter extends OncePerRequestFilter {
         HttpSession session = request.getSession();
         if (MODE_LOGIN.equals(mode) || MODE_SIGNUP.equals(mode)) {
             session.setAttribute(SESSION_ATTRIBUTE, mode);
+            // 중단된 연동이 남아 있어도 명시적인 로그인·가입이 연동으로 처리되지 않게 함 (연동 시작은 mode 없이 들어옴)
+            session.removeAttribute(OAuth2MemberService.LINK_SESSION_ATTRIBUTE);
         } else {
             session.removeAttribute(SESSION_ATTRIBUTE);
         }

@@ -1,6 +1,7 @@
 package com.ll.demo.global.security.oauth2;
 
 import com.ll.demo.domain.member.member.dto.SocialLoginResult;
+import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.service.MemberService;
 import com.ll.demo.domain.member.member.type.MemberProvider;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,11 +19,15 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OAuth2MemberService extends DefaultOAuth2UserService {
 
+    public static final String LINK_SESSION_ATTRIBUTE = "OAUTH2_LINK_MEMBER_ID";
+    public static final String LINKED_PROVIDER_ATTRIBUTE = "OAUTH2_LINKED_PROVIDER";
+
     private final MemberService memberService;
     private final HttpServletRequest request;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        Long linkMemberId = consumeLinkMemberId();
         OAuth2User oAuth2User = super.loadUser(userRequest);
         Map<String, Object> attributes = oAuth2User.getAttributes();
 
@@ -64,7 +69,14 @@ public class OAuth2MemberService extends DefaultOAuth2UserService {
             throw new OAuth2AuthenticationException("지원하지 않는 소셜 로그인: " + registrationId);
         }
 
-        boolean createIfAbsent = !OAuth2LoginModeFilter.MODE_LOGIN.equals(consumeLoginMode());
+        String loginMode = consumeLoginMode();
+        if (linkMemberId != null) {
+            Member member = memberService.linkSocialAccount(linkMemberId, provider, providerId);
+            request.setAttribute(LINKED_PROVIDER_ATTRIBUTE, registrationId);
+            return new CustomOAuth2User(member, attributes, false);
+        }
+
+        boolean createIfAbsent = !OAuth2LoginModeFilter.MODE_LOGIN.equals(loginMode);
         SocialLoginResult result = memberService.findOrCreateSocialMember(
                 provider, providerId, email, emailVerified, nickname, profileImage, createIfAbsent);
         return new CustomOAuth2User(result.member(), attributes, result.newUser());
@@ -72,6 +84,16 @@ public class OAuth2MemberService extends DefaultOAuth2UserService {
 
     private boolean isTrue(Object value) {
         return Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private Long consumeLinkMemberId() {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return null;
+        }
+        Object memberId = session.getAttribute(LINK_SESSION_ATTRIBUTE);
+        session.removeAttribute(LINK_SESSION_ATTRIBUTE);
+        return memberId instanceof Long ? (Long) memberId : null;
     }
 
     private String consumeLoginMode() {

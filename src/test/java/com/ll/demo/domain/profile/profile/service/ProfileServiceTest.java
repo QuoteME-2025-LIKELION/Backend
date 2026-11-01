@@ -50,6 +50,7 @@ class ProfileServiceTest {
     @Mock private QuoteTagRequestRepository quoteTagRequestRepository;
     @Mock private BookmarkRepository bookmarkRepository;
     @Mock private PokeRepository pokeRepository;
+    @Mock private com.ll.demo.domain.member.member.repository.MemberSocialAccountRepository memberSocialAccountRepository;
 
     @InjectMocks
     private ProfileService profileService;

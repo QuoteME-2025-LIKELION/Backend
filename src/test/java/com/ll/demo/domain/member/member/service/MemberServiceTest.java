@@ -33,6 +33,7 @@ class MemberServiceTest {
 
     @Mock private MemberRepository memberRepository;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private com.ll.demo.domain.member.member.repository.MemberSocialAccountRepository memberSocialAccountRepository;
     @Mock private AuthTokenService authTokenService;
 
     @InjectMocks private MemberService memberService;

@@ -8,6 +8,8 @@ import com.ll.demo.domain.group.group.entity.GroupMember;
 import com.ll.demo.domain.group.group.entity.InviteType;
 import com.ll.demo.domain.group.group.entity.JoinStatus;
 import com.ll.demo.domain.member.member.entity.Member;
+import com.ll.demo.domain.member.member.entity.MemberSocialAccount;
+import com.ll.demo.domain.member.member.type.MemberProvider;
 import com.ll.demo.domain.notification.entity.Notification;
 import com.ll.demo.domain.notification.entity.NotificationSetting;
 import com.ll.demo.domain.poke.entity.Poke;
@@ -57,7 +59,8 @@ class DeleteAccountIntegrationTest {
             Map.entry("GroupJoinRequest", "requester"),
             Map.entry("Poke", "sender"),
             Map.entry("Notification", "receiver"),
-            Map.entry("NotificationSetting", "member")
+            Map.entry("NotificationSetting", "member"),
+            Map.entry("MemberSocialAccount", "member")
     );
     private static final Map<String, String> SECOND_MEMBER_REFERENCES = Map.of(
             "Friendship", "friend",
@@ -163,6 +166,8 @@ class DeleteAccountIntegrationTest {
         poke(x, later);
         poke(later, x);
         persist(NotificationSetting.builder().member(x).build());
+        persist(MemberSocialAccount.builder().member(x).provider(MemberProvider.GOOGLE).providerId("x-google").build());
+        persist(MemberSocialAccount.builder().member(x).provider(MemberProvider.KAKAO).providerId("x-kakao").build());
         em.flush();
         em.clear();
 

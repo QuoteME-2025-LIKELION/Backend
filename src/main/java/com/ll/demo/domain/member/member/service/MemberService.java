@@ -15,7 +15,9 @@ import com.ll.demo.domain.member.member.dto.ProfileResponse;
 import com.ll.demo.domain.member.member.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.member.member.dto.SearchCombinedResponse;
 import com.ll.demo.domain.member.member.entity.Member;
+import com.ll.demo.domain.member.member.entity.MemberSocialAccount;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
+import com.ll.demo.domain.member.member.repository.MemberSocialAccountRepository;
 import com.ll.demo.domain.member.member.type.MemberProvider;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
@@ -58,6 +60,8 @@ public class MemberService {
     private static final int NICKNAME_MAX_LENGTH = 10;
     public static final String SOCIAL_ACCOUNT_NOT_FOUND = "account_not_found";
     public static final String SOCIAL_EMAIL_NOT_VERIFIED = "email_not_verified";
+    public static final String SOCIAL_ALREADY_LINKED = "already_linked";
+    public static final String SOCIAL_PROVIDER_ALREADY_LINKED = "provider_already_linked";
 
     private final AuthTokenService authTokenService;
     private final MemberRepository memberRepository;
@@ -70,6 +74,7 @@ public class MemberService {
     private final QuoteTagRepository quoteTagRepository;
     private final QuoteTagRequestRepository quoteTagRequestRepository;
     private final NoticeRepository noticeRepository;
+    private final MemberSocialAccountRepository memberSocialAccountRepository;
 
     // 이메일로 회원 조회
     @Transactional(readOnly = true)
@@ -267,13 +272,20 @@ public class MemberService {
             String email, boolean emailVerified, String nickname, String profileImage,
             boolean createIfAbsent) {
 
-        // 1. provider + providerId로 조회
+        // 1. 소셜 계정 테이블로 조회
+        Optional<MemberSocialAccount> account = memberSocialAccountRepository.findByProviderAndProviderId(provider, providerId);
+        if (account.isPresent()) {
+            return new SocialLoginResult(account.get().getMember(), false);
+        }
+
+        // 2. 기존 members.provider + providerId로 조회
         Optional<Member> existing = memberRepository.findByProviderAndProviderId(provider, providerId);
         if (existing.isPresent()) {
+            ensureSocialAccount(existing.get(), provider, providerId);
             return new SocialLoginResult(existing.get(), false);
         }
 
-        // 2. 동일 이메일의 계정이 있으면, 제공자가 이메일을 인증한 경우에만 provider 연결 후 반환
+        // 3. 동일 이메일의 계정이 있으면, 제공자가 이메일을 인증한 경우에만 provider 연결 후 반환
         if (email != null) {
             Optional<Member> localMember = memberRepository.findByEmail(email);
             if (localMember.isPresent()) {
@@ -286,7 +298,9 @@ public class MemberService {
                 m.setProviderId(providerId);
                 m.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
                 m.setRefreshToken(null);
-                return new SocialLoginResult(memberRepository.save(m), false);
+                Member saved = memberRepository.save(m);
+                ensureSocialAccount(saved, provider, providerId);
+                return new SocialLoginResult(saved, false);
             }
         }
 
@@ -295,7 +309,7 @@ public class MemberService {
                     new OAuth2Error(SOCIAL_ACCOUNT_NOT_FOUND), "존재하지 않는 계정입니다.");
         }
 
-        // 3. 신규 소셜 회원 생성
+        // 4. 신규 소셜 회원 생성
         String resolvedNickname = limitNickname(nickname);
         if (resolvedNickname == null) {
             resolvedNickname = limitNickname(email != null ? email.split("@")[0] : null);
@@ -311,7 +325,53 @@ public class MemberService {
                 .provider(provider)
                 .providerId(providerId)
                 .build();
-        return new SocialLoginResult(memberRepository.save(newMember), true);
+        Member saved = memberRepository.save(newMember);
+        ensureSocialAccount(saved, provider, providerId);
+        return new SocialLoginResult(saved, true);
+    }
+
+    // 계정 연동: 이미 같은 회원에게 연결되어 있으면 아무것도 하지 않음
+    @Transactional
+    public Member linkSocialAccount(Long memberId, MemberProvider provider, String providerId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new OAuth2AuthenticationException(
+                        new OAuth2Error(SOCIAL_ACCOUNT_NOT_FOUND), "존재하지 않는 계정입니다."));
+
+        Optional<MemberSocialAccount> account = memberSocialAccountRepository.findByProviderAndProviderId(provider, providerId);
+        if (account.isPresent()) {
+            if (!account.get().getMember().getId().equals(memberId)) {
+                throw new OAuth2AuthenticationException(
+                        new OAuth2Error(SOCIAL_ALREADY_LINKED), "다른 회원에게 연결된 소셜 계정입니다.");
+            }
+            return member;
+        }
+
+        boolean usedByOther = memberRepository.findByProviderAndProviderId(provider, providerId)
+                .filter(owner -> !owner.getId().equals(memberId))
+                .isPresent();
+        if (usedByOther) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error(SOCIAL_ALREADY_LINKED), "다른 회원에게 연결된 소셜 계정입니다.");
+        }
+
+        if (memberSocialAccountRepository.existsByMemberAndProvider(member, provider)) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error(SOCIAL_PROVIDER_ALREADY_LINKED), "같은 소셜 서비스의 다른 계정이 이미 연결되어 있습니다.");
+        }
+
+        ensureSocialAccount(member, provider, providerId);
+        return member;
+    }
+
+    private void ensureSocialAccount(Member member, MemberProvider provider, String providerId) {
+        if (memberSocialAccountRepository.existsByMemberAndProvider(member, provider)) {
+            return;
+        }
+        memberSocialAccountRepository.save(MemberSocialAccount.builder()
+                .member(member)
+                .provider(provider)
+                .providerId(providerId)
+                .build());
     }
 
     private String limitNickname(String value) {

@@ -33,7 +33,9 @@ public class OAuth2FailureHandler extends SimpleUrlAuthenticationFailureHandler 
         if (exception instanceof OAuth2AuthenticationException oauth2Exception) {
             String code = oauth2Exception.getError().getErrorCode();
             if (MemberService.SOCIAL_ACCOUNT_NOT_FOUND.equals(code)
-                    || MemberService.SOCIAL_EMAIL_NOT_VERIFIED.equals(code)) {
+                    || MemberService.SOCIAL_EMAIL_NOT_VERIFIED.equals(code)
+                    || MemberService.SOCIAL_ALREADY_LINKED.equals(code)
+                    || MemberService.SOCIAL_PROVIDER_ALREADY_LINKED.equals(code)) {
                 return UriComponentsBuilder.fromUriString(failureUri).queryParam("reason", code).build().toUriString();
             }
         }

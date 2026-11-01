@@ -28,6 +28,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     // keyword는 '!'로 LIKE 이스케이프(!, %, _)된 값이어야 함
     List<Member> searchMembersByNicknameOrEmailUsername(@Param("keyword") String keyword);
 
+    @Query("SELECT m FROM Member m WHERE m.provider <> com.ll.demo.domain.member.member.type.MemberProvider.LOCAL AND m.providerId IS NOT NULL")
+    List<Member> findAllWithSocialProvider();
+
     // MySQL은 SET을 왼쪽부터 평가하므로 aiUsageCount를 aiUsageDate보다 먼저 둔다
     @Modifying
     @Query("""

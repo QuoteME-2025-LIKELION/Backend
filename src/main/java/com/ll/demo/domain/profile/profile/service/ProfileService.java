@@ -13,6 +13,7 @@ import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
+import com.ll.demo.domain.member.member.repository.MemberSocialAccountRepository;
 import com.ll.demo.domain.notification.repository.NotificationRepository;
 import com.ll.demo.domain.notification.repository.NotificationSettingRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
@@ -48,6 +49,7 @@ public class ProfileService {
     private final QuoteTagRequestRepository quoteTagRequestRepository;
     private final BookmarkRepository bookmarkRepository;
     private final PokeRepository pokeRepository;
+    private final MemberSocialAccountRepository memberSocialAccountRepository;
 
     // 프로필 정보 조회
     @Transactional(readOnly = true)
@@ -116,7 +118,7 @@ public class ProfileService {
     public AccountInfoResponse getAccountInfo(Member member) {
         Member persistentMember = memberRepository.findById(member.getId())
                 .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
-        return AccountInfoResponse.from(persistentMember);
+        return AccountInfoResponse.from(persistentMember, memberSocialAccountRepository.findAllByMemberOrderById(persistentMember));
     }
     // 계정 삭제
     public void deleteAccount(Member member) {
@@ -140,6 +142,7 @@ public class ProfileService {
         pokeRepository.deleteAllByMember(persistentMember);
         notificationRepository.deleteAllByMember(persistentMember);
         notificationSettingRepository.deleteByMember(persistentMember);
+        memberSocialAccountRepository.deleteAllByMember(persistentMember);
         memberRepository.delete(persistentMember);
     }
 

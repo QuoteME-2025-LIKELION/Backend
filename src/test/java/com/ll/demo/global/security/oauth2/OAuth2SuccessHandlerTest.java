@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -92,6 +93,22 @@ class OAuth2SuccessHandlerTest {
     void isNewUser() throws Exception {
         assertThat(succeed(true)).endsWith("&isNewUser=true");
         assertThat(succeed(false)).doesNotContain("isNewUser");
+    }
+
+    @Test
+    @DisplayName("연동 모드는 토큰 쿠키를 발급하지 않고 linked로 리다이렉트")
+    void linkMode_redirectsWithoutTokens() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(OAuth2MemberService.LINKED_PROVIDER_ATTRIBUTE, "kakao");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        String refreshTokenBefore = member.getRefreshToken();
+
+        handler.onAuthenticationSuccess(request, response,
+                new TestingAuthenticationToken(new CustomOAuth2User(member, Map.of(), false), null));
+
+        assertThat(response.getRedirectedUrl()).isEqualTo(REDIRECT_URI + "?linked=kakao");
+        verifyNoInteractions(rq);
+        assertThat(member.getRefreshToken()).isEqualTo(refreshTokenBefore);
     }
 
     @Test

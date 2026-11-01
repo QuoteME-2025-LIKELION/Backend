@@ -32,6 +32,13 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
         
+        // 연동이면 토큰을 새로 발급하지 않음
+        Object linkedProvider = request.getAttribute(OAuth2MemberService.LINKED_PROVIDER_ATTRIBUTE);
+        if (linkedProvider != null) {
+            getRedirectStrategy().sendRedirect(request, response, redirectUri + "?linked=" + linkedProvider);
+            return;
+        }
+
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         Member member = oAuth2User.getMember();
 

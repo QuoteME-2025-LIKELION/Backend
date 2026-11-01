@@ -6,10 +6,14 @@ import com.ll.demo.domain.profile.profile.dto.ProfileResponse;
 import com.ll.demo.domain.profile.profile.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.profile.profile.service.ProfileService;
 import com.ll.demo.global.aws.S3Service;
+import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.security.SecurityUser;
+import com.ll.demo.global.security.oauth2.OAuth2MemberService;
 import com.ll.demo.standard.rq.Rq;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,11 +21,15 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URI;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/profile")
 @RequiredArgsConstructor
 public class ProfileController {
+    private static final Set<String> LINKABLE_PROVIDERS = Set.of("google", "kakao");
+
     private final ProfileService profileService;
     private final S3Service s3Service;
     private final Rq rq;
@@ -63,6 +71,24 @@ public class ProfileController {
     ) {
         profileService.updateAccountInfo(securityUser.getMember(), request);
         return ResponseEntity.ok("계정 정보가 수정되었습니다.");
+    }
+
+    // 소셜 계정 연동 시작 (브라우저 이동으로 호출, 세션에 연동 대상을 남기고 OAuth로 이동)
+    @GetMapping("/account/link/{provider}")
+    public ResponseEntity<Void> startSocialLink(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @PathVariable String provider,
+            HttpServletRequest request
+    ) {
+        if (!LINKABLE_PROVIDERS.contains(provider)) {
+            throw new GlobalException("400", "지원하지 않는 소셜 서비스입니다.");
+        }
+        profileService.validateNotGuest(securityUser.getMember());
+
+        request.getSession().setAttribute(OAuth2MemberService.LINK_SESSION_ATTRIBUTE, securityUser.getMember().getId());
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create("/oauth2/authorization/" + provider))
+                .build();
     }
 
     // 계정 탈퇴

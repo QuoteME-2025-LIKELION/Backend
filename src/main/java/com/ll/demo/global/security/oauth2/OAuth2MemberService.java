@@ -1,6 +1,6 @@
 package com.ll.demo.global.security.oauth2;
 
-import com.ll.demo.domain.member.member.entity.Member;
+import com.ll.demo.domain.member.member.dto.SocialLoginResult;
 import com.ll.demo.domain.member.member.service.MemberService;
 import com.ll.demo.domain.member.member.type.MemberProvider;
 import jakarta.servlet.http.HttpServletRequest;
@@ -65,9 +65,9 @@ public class OAuth2MemberService extends DefaultOAuth2UserService {
         }
 
         boolean createIfAbsent = !OAuth2LoginModeFilter.MODE_LOGIN.equals(consumeLoginMode());
-        Member member = memberService.findOrCreateSocialMember(
+        SocialLoginResult result = memberService.findOrCreateSocialMember(
                 provider, providerId, email, emailVerified, nickname, profileImage, createIfAbsent);
-        return new CustomOAuth2User(member, attributes);
+        return new CustomOAuth2User(result.member(), attributes, result.newUser());
     }
 
     private boolean isTrue(Object value) {

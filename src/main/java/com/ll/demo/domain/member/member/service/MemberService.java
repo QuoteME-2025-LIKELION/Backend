@@ -8,6 +8,7 @@ import com.ll.demo.domain.group.group.entity.Group;
 import com.ll.demo.domain.group.group.entity.GroupMember;
 import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
 import com.ll.demo.domain.group.group.repository.GroupRepository;
+import com.ll.demo.domain.member.member.dto.SocialLoginResult;
 import com.ll.demo.domain.member.member.dto.FriendResponse;
 import com.ll.demo.domain.member.member.dto.MemberSearchResponse;
 import com.ll.demo.domain.member.member.dto.ProfileResponse;
@@ -261,7 +262,7 @@ public class MemberService {
 
     // 소셜 로그인: 기존 회원 조회 or 신규 생성
     @Transactional
-    public Member findOrCreateSocialMember(
+    public SocialLoginResult findOrCreateSocialMember(
             MemberProvider provider, String providerId,
             String email, boolean emailVerified, String nickname, String profileImage,
             boolean createIfAbsent) {
@@ -269,7 +270,7 @@ public class MemberService {
         // 1. provider + providerId로 조회
         Optional<Member> existing = memberRepository.findByProviderAndProviderId(provider, providerId);
         if (existing.isPresent()) {
-            return existing.get();
+            return new SocialLoginResult(existing.get(), false);
         }
 
         // 2. 동일 이메일의 계정이 있으면, 제공자가 이메일을 인증한 경우에만 provider 연결 후 반환
@@ -285,7 +286,7 @@ public class MemberService {
                 m.setProviderId(providerId);
                 m.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
                 m.setRefreshToken(null);
-                return memberRepository.save(m);
+                return new SocialLoginResult(memberRepository.save(m), false);
             }
         }
 
@@ -310,7 +311,7 @@ public class MemberService {
                 .provider(provider)
                 .providerId(providerId)
                 .build();
-        return memberRepository.save(newMember);
+        return new SocialLoginResult(memberRepository.save(newMember), true);
     }
 
     private String limitNickname(String value) {

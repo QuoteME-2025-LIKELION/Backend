@@ -13,7 +13,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface QuoteTagRequestRepository extends JpaRepository<QuoteTagRequest, Long> {
     // 특정 글에 특정 멤버가 이미 태그 요청을 했는지 확인
-    boolean existsByQuoteAndRequester(Quote quote, Member requester);
+    boolean existsByQuoteAndRequesterAndStatus(Quote quote, Member requester, TagRequestStatus status);
 
     List<QuoteTagRequest> findAllByQuoteIdAndStatus(Long quoteId, TagRequestStatus status);
 

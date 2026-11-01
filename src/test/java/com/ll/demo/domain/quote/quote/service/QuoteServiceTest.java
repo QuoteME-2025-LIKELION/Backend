@@ -561,7 +561,7 @@ class QuoteServiceTest {
         when(quoteRepository.findById(100L)).thenReturn(Optional.of(testQuote));
         when(memberRepository.findById(3L)).thenReturn(Optional.of(requester));
         when(quoteTagRepository.existsByQuoteAndMember(testQuote, requester)).thenReturn(false);
-        when(quoteTagRequestRepository.existsByQuoteAndRequester(testQuote, requester)).thenReturn(false);
+        when(quoteTagRequestRepository.findByQuoteAndRequester(testQuote, requester)).thenReturn(Optional.empty());
 
         quoteService.requestTag(3L, 100L);
 
@@ -582,7 +582,8 @@ class QuoteServiceTest {
         when(quoteRepository.findById(100L)).thenReturn(Optional.of(testQuote));
         when(memberRepository.findById(3L)).thenReturn(Optional.of(requester));
         when(quoteTagRepository.existsByQuoteAndMember(testQuote, requester)).thenReturn(false);
-        when(quoteTagRequestRepository.existsByQuoteAndRequester(testQuote, requester)).thenReturn(true);
+        when(quoteTagRequestRepository.findByQuoteAndRequester(testQuote, requester)).thenReturn(Optional.of(
+                QuoteTagRequest.builder().quote(testQuote).requester(requester).status(TagRequestStatus.PENDING).build()));
 
         GlobalException ex = assertThrows(
                 GlobalException.class,
@@ -615,7 +616,7 @@ class QuoteServiceTest {
     @Test
     @DisplayName("성공: 피드의 myTagStatus는 태그되지 않고 요청 이력이 있으면 REQUESTED다")
     void getFeed_myTagStatus_requested() {
-        when(quoteTagRequestRepository.existsByQuoteAndRequester(testQuote, sender)).thenReturn(true);
+        when(quoteTagRequestRepository.existsByQuoteAndRequesterAndStatus(testQuote, sender, TagRequestStatus.PENDING)).thenReturn(true);
 
         assertThat(getSingleFeedItem().myTagStatus()).isEqualTo("REQUESTED");
     }

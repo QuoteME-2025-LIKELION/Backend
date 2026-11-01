@@ -436,17 +436,22 @@ public class QuoteService {
         if (quote.getAuthor().getId().equals(requesterId)) {
             throw new GlobalException("400", "본인 글에는 태그 요청을 할 수 없습니다.");
         }
-        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
+
+        QuoteTagRequest existing = quoteTagRequestRepository.findByQuoteAndRequester(quote, requester).orElse(null);
+        if (existing != null && existing.getStatus() != TagRequestStatus.REJECTED) {
             throw new GlobalException("400-1", "이미 태그 요청을 보냈습니다.");
         }
 
-        QuoteTagRequest request = QuoteTagRequest.builder()
-                .quote(quote)
-                .requester(requester)
-                .status(TagRequestStatus.PENDING)
-                .build();
-
-        quoteTagRequestRepository.save(request);
+        // 거절된 요청은 다시 대기 상태로 되돌림
+        if (existing != null) {
+            existing.reopen();
+        } else {
+            quoteTagRequestRepository.save(QuoteTagRequest.builder()
+                    .quote(quote)
+                    .requester(requester)
+                    .status(TagRequestStatus.PENDING)
+                    .build());
+        }
 
         notificationService.create(
                 quote.getAuthor(),
@@ -612,7 +617,7 @@ public class QuoteService {
         if (quoteTagRepository.existsByQuoteAndMember(quote, member)) {
             return "TAGGED";
         }
-        if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, member)) {
+        if (quoteTagRequestRepository.existsByQuoteAndRequesterAndStatus(quote, member, TagRequestStatus.PENDING)) {
             return "REQUESTED";
         }
         return "NONE";

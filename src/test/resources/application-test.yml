@@ -1,0 +1,47 @@
+# Test-only profile: dummy values, in-memory H2. Never put real secrets here.
+spring:
+  datasource:
+    url: jdbc:h2:mem:quoteme_test;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
+          kakao:
+            client-id: test-kakao-client-id
+            client-secret: test-kakao-client-secret
+  cloud:
+    aws:
+      s3:
+        bucket: test-bucket
+      region:
+        static: ap-northeast-2
+      credentials:
+        access-key: test-access-key
+        secret-key: test-secret-key
+
+logging:
+  level:
+    com.ll.demo: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.hibernate.orm.jdbc.extract: WARN
+    org.springframework.transaction.interceptor: WARN
+
+custom:
+  secret:
+    key: test-secret-key-dummy
+    jwt:
+      secretKey: test-jwt-secret-key-for-hs512-must-be-at-least-sixty-four-bytes-long-0123456789abcdef
+  jwt:
+    secretKey: test-jwt-secret-key-for-hs512-must-be-at-least-sixty-four-bytes-long-0123456789abcdef
+  gemini:
+    api-key: test-gemini-api-key

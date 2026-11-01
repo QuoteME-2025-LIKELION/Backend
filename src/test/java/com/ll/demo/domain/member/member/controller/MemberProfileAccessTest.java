@@ -89,6 +89,6 @@ class MemberProfileAccessTest {
 
         mvc.perform(get("/api/profile/account").header("Authorization", token))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.resultCode").value("403"));
+                .andExpect(jsonPath("$.resultCode").value("403-1"));
     }
 }

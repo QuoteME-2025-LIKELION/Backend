@@ -66,7 +66,7 @@ public class SecurityConfig {
                             response.setStatus(403);
                             response.getWriter().write(
                                     Ut.json.toString(
-                                            RsData.of("403-1", request.getRequestURI() + ", " + authException.getLocalizedMessage())
+                                            RsData.of("403-1", request.getRequestURI() + ", " + authException.getLocalizedMessage(), null)
                                     )
                             );
                         })

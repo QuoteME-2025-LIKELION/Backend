@@ -26,7 +26,7 @@ public class FriendshipController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         friendshipService.sendFriendRequest(user.getMember(), targetId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-1", "친구 요청을 보냈습니다."));
+        return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-1", "친구 요청을 보냈습니다.", null));
     }
 
     // 친구 요청 목록 조회 (받은 요청 + 보낸 요청)
@@ -44,7 +44,7 @@ public class FriendshipController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         friendshipService.acceptFriendRequest(user.getMember(), requestId);
-        return ResponseEntity.ok(RsData.of("200", "친구 요청을 수락했습니다."));
+        return ResponseEntity.ok(RsData.of("200", "친구 요청을 수락했습니다.", null));
     }
 
     // 친구 요청 거절
@@ -54,7 +54,7 @@ public class FriendshipController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         friendshipService.rejectFriendRequest(user.getMember(), requestId);
-        return ResponseEntity.ok(RsData.of("200", "친구 요청을 거절했습니다."));
+        return ResponseEntity.ok(RsData.of("200", "친구 요청을 거절했습니다.", null));
     }
 
     // 친구 삭제
@@ -64,6 +64,6 @@ public class FriendshipController {
             @PathVariable Long friendId
     ) {
         friendshipService.removeFriend(user.getMember(), friendId);
-        return ResponseEntity.ok(RsData.of("200", "친구 삭제 완료"));
+        return ResponseEntity.ok(RsData.of("200", "친구 삭제 완료", null));
     }
 }

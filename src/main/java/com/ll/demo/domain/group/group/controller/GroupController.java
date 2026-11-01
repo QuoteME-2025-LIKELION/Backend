@@ -46,7 +46,7 @@ public class GroupController {
             @PathVariable Long friendId
     ) {
         groupService.inviteFriend(user.getMember(), groupId, friendId);
-        return ResponseEntity.ok(RsData.of("200", "초대가 완료되었습니다."));
+        return ResponseEntity.ok(RsData.of("200", "초대가 완료되었습니다.", null));
     }
 
     // 내가 특정 그룹에 보낸 초대 대기 목록 조회 (그룹장 전용)
@@ -66,7 +66,7 @@ public class GroupController {
             @PathVariable Long requestId
     ) {
         groupService.cancelInvitation(user.getMember(), groupId, requestId);
-        return ResponseEntity.ok(RsData.of("200", "그룹 초대를 취소했습니다."));
+        return ResponseEntity.ok(RsData.of("200", "그룹 초대를 취소했습니다.", null));
     }
 
     // 그룹 멤버 삭제 / 탈퇴
@@ -77,7 +77,7 @@ public class GroupController {
             @PathVariable Long memberId
     ) {
         groupService.removeOrLeaveMember(user.getMember(), groupId, memberId);
-        return ResponseEntity.ok(RsData.of("200", "완료되었습니다."));
+        return ResponseEntity.ok(RsData.of("200", "완료되었습니다.", null));
     }
 
     // 그룹 가입 요청
@@ -87,7 +87,7 @@ public class GroupController {
             @PathVariable Long groupId
     ) {
         groupService.requestToJoin(user.getMember(), groupId);
-        return ResponseEntity.ok(RsData.of("200", "참여 요청이 발송되었습니다."));
+        return ResponseEntity.ok(RsData.of("200", "참여 요청이 발송되었습니다.", null));
     }
 
     // 가입 요청 수락
@@ -97,7 +97,7 @@ public class GroupController {
             @PathVariable Long requestId
     ) {
         groupService.acceptJoinRequest(user.getMember(), requestId);
-        return ResponseEntity.ok(RsData.of("200", "가입 승인이 완료되었습니다."));
+        return ResponseEntity.ok(RsData.of("200", "가입 승인이 완료되었습니다.", null));
     }
 
     // 가입 요청 거절
@@ -107,7 +107,7 @@ public class GroupController {
             @PathVariable Long requestId
     ) {
         groupService.rejectJoinRequest(user.getMember(), requestId);
-        return ResponseEntity.ok(RsData.of("200", "가입 요청을 거절했습니다."));
+        return ResponseEntity.ok(RsData.of("200", "가입 요청을 거절했습니다.", null));
     }
 
     // 그룹 가입 요청 목록 조회 (그룹장 전용)
@@ -132,7 +132,7 @@ public class GroupController {
             @PathVariable Long groupId
     ) {
         groupService.deleteGroup(user.getMember(), groupId);
-        return ResponseEntity.ok(RsData.of("200", "그룹이 삭제되었습니다."));
+        return ResponseEntity.ok(RsData.of("200", "그룹이 삭제되었습니다.", null));
     }
 
     // 그룹 메시지(좌우명) 수정
@@ -143,7 +143,7 @@ public class GroupController {
             @Valid @RequestBody MottoRequest req
     ) {
         groupService.updateMotto(securityUser.getMember(), groupId, req.motto());
-        return ResponseEntity.ok(RsData.of("200", "성공적으로 수정되었습니다."));
+        return ResponseEntity.ok(RsData.of("200", "성공적으로 수정되었습니다.", null));
     }
 
     // 내게 온 그룹 초대 목록 조회
@@ -161,7 +161,7 @@ public class GroupController {
             @PathVariable Long requestId
     ) {
         groupService.acceptInvitation(user.getMember(), requestId);
-        return ResponseEntity.ok(RsData.of("200", "그룹 초대를 수락했습니다."));
+        return ResponseEntity.ok(RsData.of("200", "그룹 초대를 수락했습니다.", null));
     }
 
     // 그룹 초대 거절
@@ -171,6 +171,6 @@ public class GroupController {
             @PathVariable Long requestId
     ) {
         groupService.rejectInvitation(user.getMember(), requestId);
-        return ResponseEntity.ok(RsData.of("200", "그룹 초대를 거절했습니다."));
+        return ResponseEntity.ok(RsData.of("200", "그룹 초대를 거절했습니다.", null));
     }
 }

@@ -1,7 +1,9 @@
 package com.ll.demo.domain.member.member.dto;
 
+import com.ll.demo.global.validation.BirthYearRange;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -20,5 +22,7 @@ public class MemberJoinReqBody {
 
     @NotBlank(message = "출생년도를 입력해주세요.")
     @Size(min = 4, max = 4, message = "출생년도는 4자리로 입력해주세요.")
+    @Pattern(regexp = "\\d{4}", message = "출생년도는 숫자 4자리로 입력해주세요.")
+    @BirthYearRange
     private String birthYear;
 }

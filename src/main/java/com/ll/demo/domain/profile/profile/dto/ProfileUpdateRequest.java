@@ -1,12 +1,12 @@
 package com.ll.demo.domain.profile.profile.dto;
 
-import jakarta.validation.constraints.Size;
+import com.ll.demo.global.validation.MaxChars;
 
 public record ProfileUpdateRequest(
-        @Size(max = 10, message = "닉네임은 10자 이내여야 합니다.")
+        @MaxChars(value = 10, message = "닉네임은 10자 이내여야 합니다.")
         String nickname,
 
-        @Size(max = 20, message = "자기소개는 20자 이내로 작성해주세요.")
+        @MaxChars(value = 20, message = "자기소개는 20자 이내로 작성해주세요.")
         String introduction,
 
         String profileImage

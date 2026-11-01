@@ -33,6 +33,7 @@ class MemberServiceTest {
 
     @Mock private MemberRepository memberRepository;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private com.ll.demo.domain.member.member.repository.MemberSocialAccountRepository memberSocialAccountRepository;
     @Mock private AuthTokenService authTokenService;
 
     @InjectMocks private MemberService memberService;
@@ -86,7 +87,7 @@ class MemberServiceTest {
         lenient().when(memberRepository.findByProviderAndProviderId(any(), any())).thenReturn(Optional.empty());
         lenient().when(memberRepository.findByEmail(any())).thenReturn(Optional.empty());
         lenient().when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        return memberService.findOrCreateSocialMember(MemberProvider.KAKAO, "1234567890123", email, true, nickname, null, true);
+        return memberService.findOrCreateSocialMember(MemberProvider.KAKAO, "1234567890123", email, true, nickname, null, true).member();
     }
 
     @Test
@@ -135,7 +136,7 @@ class MemberServiceTest {
         Member linked = localMember("a@test.com");
         when(memberRepository.findByProviderAndProviderId(MemberProvider.GOOGLE, "g-1")).thenReturn(Optional.of(linked));
 
-        Member result = memberService.findOrCreateSocialMember(MemberProvider.GOOGLE, "g-1", "a@test.com", true, "이름", null, false);
+        Member result = memberService.findOrCreateSocialMember(MemberProvider.GOOGLE, "g-1", "a@test.com", true, "이름", null, false).member();
 
         assertThat(result).isSameAs(linked);
         verify(memberRepository, never()).findByEmail(any());
@@ -162,7 +163,7 @@ class MemberServiceTest {
         when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Member result = memberService.findOrCreateSocialMember(
-                MemberProvider.GOOGLE, "g-3", "new@test.com", true, "이름", null, true);
+                MemberProvider.GOOGLE, "g-3", "new@test.com", true, "이름", null, true).member();
 
         assertThat(result.getProvider()).isEqualTo(MemberProvider.GOOGLE);
         assertThat(result.getProviderId()).isEqualTo("g-3");
@@ -183,7 +184,7 @@ class MemberServiceTest {
         when(memberRepository.save(local)).thenReturn(local);
 
         Member result = memberService.findOrCreateSocialMember(
-                MemberProvider.GOOGLE, "g-4", "a@test.com", true, "이름", null, false);
+                MemberProvider.GOOGLE, "g-4", "a@test.com", true, "이름", null, false).member();
 
         assertThat(result).isSameAs(local);
         assertThat(local.getProvider()).isEqualTo(MemberProvider.GOOGLE);
@@ -216,7 +217,7 @@ class MemberServiceTest {
         when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Member result = memberService.findOrCreateSocialMember(
-                MemberProvider.KAKAO, "123", "123@kakao.user", false, null, null, true);
+                MemberProvider.KAKAO, "123", "123@kakao.user", false, null, null, true).member();
 
         assertThat(result.getProvider()).isEqualTo(MemberProvider.KAKAO);
         assertThat(result.getNickname()).isEqualTo("123");

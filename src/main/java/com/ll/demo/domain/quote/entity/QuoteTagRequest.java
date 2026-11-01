@@ -38,4 +38,8 @@ public class QuoteTagRequest extends BaseTime {
     public void reject() {
         this.status = TagRequestStatus.REJECTED;
     }
+
+    public void reopen() {
+        this.status = TagRequestStatus.PENDING;
+    }
 }

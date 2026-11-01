@@ -1,17 +1,21 @@
 package com.ll.demo.global.gemini;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
+import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class GeminiService {
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final int MAX_SUMMARIES = 3;
+    private static final int MAX_SUMMARY_LENGTH = 30; // QuoteService.validateQuoteContent와 같은 기준
 
     private final Client client;
 
@@ -63,13 +67,46 @@ public class GeminiService {
             GenerateContentResponse response = client.models.generateContent(
                     "gemini-2.5-flash",
                     prompt,
-                    null
+                    GenerateContentConfig.builder().responseMimeType("application/json").build()
             );
 
-            return objectMapper.readValue(response.text(), new TypeReference<List<String>>() {});
+            return parseSummaries(response.text());
         } catch (Exception e) {
             e.printStackTrace();
             return List.of();
         }
+    }
+
+    static List<String> parseSummaries(String text) {
+        if (text == null) {
+            return List.of();
+        }
+
+        String json = text.strip()
+                .replaceFirst("^```[a-zA-Z]*\\s*", "")
+                .replaceFirst("\\s*```$", "");
+
+        JsonNode root;
+        try {
+            root = OBJECT_MAPPER.readTree(json);
+        } catch (Exception e) {
+            return List.of();
+        }
+
+        if (root == null || !root.isArray()) {
+            return List.of();
+        }
+
+        List<String> summaries = new ArrayList<>();
+        for (JsonNode item : root) {
+            String summary = item.isTextual() ? item.textValue().strip() : "";
+            if (!summary.isEmpty() && summary.codePointCount(0, summary.length()) <= MAX_SUMMARY_LENGTH) {
+                summaries.add(summary);
+            }
+            if (summaries.size() == MAX_SUMMARIES) {
+                break;
+            }
+        }
+        return summaries;
     }
 }

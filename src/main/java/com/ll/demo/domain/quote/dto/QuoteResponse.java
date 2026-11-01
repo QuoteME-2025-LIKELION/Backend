@@ -12,22 +12,36 @@ public record QuoteResponse(
         String authorName,
         Integer authorBirthYear,
         List<String> taggedMemberNames,
-        LocalDateTime createDate
+        LocalDateTime createDate,
+        List<QuoteTagResponse> tags,
+        boolean isBookmarked
 ) {
     public QuoteResponse(Quote quote) {
+        this(quote, false);
+    }
+
+    public QuoteResponse(Quote quote, boolean isBookmarked) {
         this(
                 quote.getId(),
                 quote.getContent(),
                 quote.getOriginalContent(),
                 quote.getSummary(),
                 quote.getAuthor().getNickname(),
-                quote.getAuthor().getBirthYear() != null
-                        ? Integer.valueOf(quote.getAuthor().getBirthYear()) : null,
+                parseBirthYear(quote.getAuthor().getBirthYear()),
                 quote.getQuoteTags().stream()
                                 .map(tag -> tag.getMember().getName())
                                 .toList(),
-                quote.getCreateDate()
+                quote.getCreateDate(),
+                quote.getQuoteTags().stream()
+                                .map(QuoteTagResponse::from)
+                                .toList(),
+                isBookmarked
         );
+    }
+
+    // 과거에 저장된 숫자가 아닌 값은 null로 응답
+    private static Integer parseBirthYear(String birthYear) {
+        return birthYear != null && birthYear.matches("\\d{1,9}") ? Integer.valueOf(birthYear) : null;
     }
 
     public static QuoteResponse from(Quote quote) {

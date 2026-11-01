@@ -9,9 +9,11 @@ public record MyQuoteResponse(
         String groupName,
         String authorNickname,
         String birthYear,
-        List<String> taggedNicknames
+        List<String> taggedNicknames,
+        boolean isBookmarked,
+        List<QuoteTagResponse> tags
 ) {
-        public static MyQuoteResponse from(Quote quote, String groupName) {
+        public static MyQuoteResponse from(Quote quote, String groupName, boolean isBookmarked) {
         String content = (quote.getSummary() != null && !quote.getSummary().isBlank())
                 ? quote.getSummary()
                 : quote.getContent();
@@ -24,6 +26,10 @@ public record MyQuoteResponse(
                 quote.getAuthor().getBirthYear(),
                 quote.getQuoteTags().stream()
                         .map(qt -> qt.getMember().getNickname())
+                        .toList(),
+                isBookmarked,
+                quote.getQuoteTags().stream()
+                        .map(QuoteTagResponse::from)
                         .toList()
         );
     }

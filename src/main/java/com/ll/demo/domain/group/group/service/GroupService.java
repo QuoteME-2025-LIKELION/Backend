@@ -10,6 +10,7 @@ import com.ll.demo.domain.group.group.entity.InviteType;
 import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
 import com.ll.demo.domain.group.group.repository.GroupRepository;
 import com.ll.demo.domain.member.member.entity.Member;
+import com.ll.demo.domain.notification.repository.NotificationRepository;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.group.group.entity.JoinStatus;
 import com.ll.demo.domain.group.group.entity.GroupJoinRequest;
@@ -40,6 +41,7 @@ public class GroupService {
     private final GroupJoinRequestRepository groupJoinRequestRepository;
     private final QuoteRepository quoteRepository;
     private final NotificationService notificationService;
+    private final NotificationRepository notificationRepository;
 
     private static final int MAX_GROUP_MEMBERS = 5;
     private static final String CAPACITY_ERROR = "최대 인원 5명이 가득 차 들어갈 수 없어요";
@@ -339,6 +341,9 @@ public class GroupService {
         if (!group.getLeader().getId().equals(leader.getId())) {
             throw new GlobalException("403", "권한이 없습니다.");
         }
+        if (joinReq.getStatus() != JoinStatus.PENDING || joinReq.getType() != InviteType.JOIN_REQUEST) {
+            throw new GlobalException("400-5", "처리할 수 없는 요청입니다.");
+        }
 
         if (!groupMemberRepository.existsByGroupAndMember(group, joinReq.getRequester())) {
             validateGroupCapacity(group);
@@ -365,8 +370,8 @@ public class GroupService {
         if (!group.getLeader().getId().equals(leader.getId())) {
             throw new GlobalException("403", "권한이 없습니다.");
         }
-        if (joinReq.getStatus() != JoinStatus.PENDING) {
-            throw new GlobalException("400", "처리할 수 없는 요청입니다.");
+        if (joinReq.getStatus() != JoinStatus.PENDING || joinReq.getType() != InviteType.JOIN_REQUEST) {
+            throw new GlobalException("400-5", "처리할 수 없는 요청입니다.");
         }
 
         joinReq.reject();
@@ -463,6 +468,7 @@ public class GroupService {
             throw new GlobalException("403", "그룹 삭제 권한이 없습니다.");
         }
 
+        notificationRepository.deleteAllTargetingGroup(groupId);
         groupRepository.delete(group);
     }
 }

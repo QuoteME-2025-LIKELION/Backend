@@ -16,7 +16,7 @@ Base Path: `/api/auth`
 | 로그인 | 이메일 로그인 | `POST` | `/api/auth/login` | `{ email, password }` | `{ resultCode, data: { item: MemberDto, accessToken } }` | 인증 불필요. accessToken + refreshToken 쿠키 세팅 |
 | 로그인 | 게스트 로그인 | `POST` | `/api/auth/guest-login` | 없음 | `{ resultCode, data: { item: MemberDto, accessToken } }` | 인증 불필요. 더미 데이터 포함 게스트 계정 자동 생성/재사용 |
 | 공통 | 토큰 재발급 | `POST` | `/api/auth/refresh` | 없음 (쿠키의 refreshToken 사용) | `{ resultCode, data: { item: MemberDto, accessToken } }` | 인증 불필요. 새 accessToken 쿠키 세팅 |
-| 공통 | 로그아웃 | `POST` | `/api/auth/logout` | 없음 | `{ resultCode }` | accessToken, refreshToken 쿠키 삭제 |
+| 공통 | 로그아웃 | `POST` | `/api/auth/logout` | 없음 | `{ resultCode }` | accessToken, refreshToken 쿠키 삭제, 서버의 refresh 토큰 무효화 (access 토큰이 만료돼도 refresh 쿠키로 동작). 이후 같은 refresh 토큰은 `401-3` |
 
 ### MemberDto
 ```json
@@ -32,10 +32,11 @@ Base Path: `/api/profile`
 | UI 페이지 | 세부 기능 | 메소드 | API Path | 요청 파라미터/Body | 응답 | 참고 |
 |-----------|-----------|--------|----------|-------------------|------|------|
 | 내 프로필 | 내 프로필 조회 | `GET` | `/api/profile` | 없음 | `ProfileResponse` | |
-| 내 프로필 | 프로필 수정 | `PUT` | `/api/profile` | `multipart/form-data`<br>- `data` (JSON): `{ nickname?, introduction?, profileImage? }`<br>- `image` (file, optional): 프로필 이미지 | `ProfileResponse` | 이미지 업로드 시 S3 저장 |
+| 내 프로필 | 프로필 수정 | `PUT` | `/api/profile` | `multipart/form-data`<br>- `data` (JSON): `{ nickname?, introduction?, profileImage? }`<br>- `image` (file, optional): 프로필 이미지 | `ProfileResponse` | 이미지 업로드 시 S3 저장. JSON `profileImage`는 우리 버킷 URL(`https://{bucket}.s3.ap-northeast-2.amazonaws.com/profile/...`) 또는 빈 문자열(이미지 제거)만 허용 (위반 시 400), 변경하지 않으면 생략. 닉네임 10자·자기소개 20자(코드포인트 기준), 이미지는 jpeg·png·webp·gif·heic만 5MB까지 (초과 413), 게스트 403, 중복 닉네임 409 |
 | 내 프로필 | 계정 정보 조회 | `GET` | `/api/profile/account` | 없음 | `AccountInfoResponse` | 성별, 생년월일, 소셜 연동 상태 |
-| 내 프로필 | 계정 정보 수정 | `PUT` | `/api/profile/account` | `{ email, birthYear, gender }` | `String` ("계정 정보가 수정되었습니다.") | gender: `MALE` \| `FEMALE` |
-| 내 프로필 | 회원 탈퇴 | `DELETE` | `/api/profile/account` | 없음 | `String` ("회원 탈퇴가 완료되었습니다.") | 탈퇴자가 받은/보낸 알림과 알림 설정도 함께 삭제 |
+| 내 프로필 | 계정 정보 수정 | `PUT` | `/api/profile/account` | `{ email, birthYear, gender }` | `String` ("계정 정보가 수정되었습니다.") | gender: `MALE` \| `FEMALE`, birthYear: 숫자 4자리, 1900~현재 연도 (위반 시 400), 사용 중인 이메일 409. 게스트 403 |
+| 내 프로필 | 소셜 계정 연동 시작 | `GET` | `/api/profile/account/link/{provider}` | Path: `provider` (`google` \| `kakao`) | 302 → `/oauth2/authorization/{provider}` | XHR이 아닌 브라우저 이동으로 호출 (쿠키 인증). 잘못된 provider 400, 게스트 403. 성공하면 `redirect-uri?linked={provider}`로 이동하고 토큰은 새로 발급하지 않음. 실패 reason: `already_linked`, `provider_already_linked`, `account_not_found` |
+| 내 프로필 | 회원 탈퇴 | `DELETE` | `/api/profile/account` | 없음 | `String` ("회원 탈퇴가 완료되었습니다.") | 탈퇴자가 받은/보낸 알림과 알림 설정도 함께 삭제, 응답에서 accessToken, refreshToken 쿠키 만료. 탈퇴 후 기존 토큰은 미인증(403) 처리 |
 | 타인 프로필 | 다른 회원 프로필 조회 | `GET` | `/api/profile/{id}` | Path: `id` (회원 ID) | `MemberResponse` | |
 
 ### ProfileResponse
@@ -45,7 +46,7 @@ Base Path: `/api/profile`
 
 ### AccountInfoResponse
 ```json
-{ "email": String, "birthYear": String, "gender": "MALE"|"FEMALE", "provider": String, "providerId": String }
+{ "email": String, "birthYear": String, "gender": "MALE"|"FEMALE", "provider": String, "providerId": String, "linkedAccounts": [{ "provider": "GOOGLE"|"KAKAO", "linkedAt": DateTime }] }
 ```
 
 ### MemberResponse
@@ -62,9 +63,9 @@ Base Path: `/api/quotes`
 | UI 페이지 | 세부 기능 | 메소드 | API Path | 요청 파라미터/Body | 응답 | 참고 |
 |-----------|-----------|--------|----------|-------------------|------|------|
 | 홈/피드 | 피드 명언 목록 조회 | `GET` | `/api/quotes` | Query: `date` (required, `yyyy-MM-dd`), `groupId` (optional) | `QuoteListDto` | groupId 없으면 전체 친구 피드, 있으면 해당 그룹 멤버 피드; `unwrittenMembers` 필드 추가 |
-| 명언 작성 | 명언 작성 | `POST` | `/api/quotes` | `{ content, originalContent?, summary?, taggedMemberIds?: [Long] }` | `QuoteResponse` | HTTP 201 |
-| 명언 작성 | AI 요약 (일기→명언) | `POST` | `/api/quotes/summarize` | `{ content }` | `{ "summaries": [String] }` | 하루 3회 제한 |
-| 명언 작성 | AI 사용량 조회 | `GET` | `/api/quotes/ai-usage` | 없음 | `{ "usedCount": Long, "maxCount": Long, ... }` | 오늘 AI 사용 횟수 조회 |
+| 명언 작성 | 명언 작성 | `POST` | `/api/quotes` | `{ content, originalContent?, summary?, taggedMemberIds?: [Long] }` | `QuoteResponse` | HTTP 201. 내용 30자(코드포인트 기준). `taggedMemberIds`는 작성자의 수락된 친구만 가능, 본인 제외 (위반 시 400) |
+| 명언 작성 | AI 요약 (일기→명언) | `POST` | `/api/quotes/summarize` | `{ content }` | `{ "summaries": [String] }` | 하루 3회 제한, 최대 3개, 항목당 30자 이하. 추천이 1개 이상일 때만 횟수 차감 (0개면 빈 목록 200, 차감 없음) |
+| 명언 작성 | AI 사용량 조회 | `GET` | `/api/quotes/ai-usage` | 없음 | `{ "used": Integer, "remaining": Integer, "limit": Integer }` | 오늘 AI 사용 횟수 조회 |
 | 피드 | 좋아요 등록 | `POST` | `/api/quotes/{quoteId}/like` | Path: `quoteId` | 없음 (204) | |
 
 #### AI 요약 요청 예시
@@ -97,9 +98,9 @@ Base Path: `/api/quotes`
 | 피드 | 좋아요 취소 | `DELETE` | `/api/quotes/{quoteId}/like` | Path: `quoteId` | 없음 (204) | |
 | 피드 | 북마크 추가 | `POST` | `/api/quotes/{quoteId}/bookmark` | Path: `quoteId` | `{ resultCode, data }` | HTTP 201 |
 | 피드 | 북마크 취소 | `DELETE` | `/api/quotes/{quoteId}/bookmark` | Path: `quoteId` | `{ resultCode, data }` | |
-| 피드 | 태그 요청 전송 | `POST` | `/api/quotes/{quoteId}/tag-request` | Path: `quoteId` | `{ resultCode }` | HTTP 201. 명언 작성자에게 태그 요청 |
+| 피드 | 태그 요청 전송 | `POST` | `/api/quotes/{quoteId}/tag-request` | Path: `quoteId` | `{ resultCode }` | HTTP 201. 명언 작성자에게 태그 요청. 거절된 요청은 다시 보낼 수 있음 |
 | 피드 | 내 태그 요청 상태 조회 | `GET` | `/api/quotes/{quoteId}/my-tag-request` | Path: `quoteId` | `{ "status": "PENDING"\|"ACCEPTED"\|"REJECTED"\|"NONE" }` | 버튼 비활성화 여부 확인용 |
-| 명언 상세 | 태그 수정 | `PATCH` | `/api/quotes/{quoteId}/tags` | Path: `quoteId`, Body: `{ taggedMemberIds: [Long] }` | 없음 (200) | 명언 작성자만 가능 |
+| 명언 상세 | 태그 수정 | `PATCH` | `/api/quotes/{quoteId}/tags` | Path: `quoteId`, Body: `{ taggedMemberIds: [Long] }` | 없음 (200) | 명언 작성자만 가능. 새로 추가하는 대상은 수락된 친구만 가능, 본인 제외 (위반 시 400). 이미 태그된 회원은 유지 가능 |
 | 명언 상세 | 태그 요청 목록 조회 | `GET` | `/api/quotes/{quoteId}/requests` | Path: `quoteId` | `List<QuoteTagRequestResponse>` | 명언 작성자에게 들어온 태그 요청 목록 |
 | 알림 | 태그 요청 수락 | `POST` | `/api/quotes/requests/{requestId}/accept` | Path: `requestId` | `{ resultCode }` | |
 | 알림 | 태그 요청 거절 | `POST` | `/api/quotes/requests/{requestId}/reject` | Path: `requestId` | `{ resultCode }` | |
@@ -114,17 +115,19 @@ Base Path: `/api/quotes`
 
 ### MyQuoteResponse
 ```json
-{ "id": Long, "content": String, "groupName": String, "authorNickname": String, "birthYear": String, "taggedNicknames": [String] }
+{ "id": Long, "content": String, "groupName": String, "authorNickname": String, "birthYear": String, "taggedNicknames": [String], "isBookmarked": Boolean, "tags": [{ "memberId": Long, "nickname": String, "profileImage": String }] }
 ```
 
 ### QuoteDetailResponse
 ```json
-{ "id": Long, "content": String, "taggedNicknames": [String], "authorNickname": String, "authorBirthYear": String, "authorProfileImage": String, "authorIntroduction": String, "timeAgo": String, "isLiked": Boolean, "isBookmarked": Boolean, "isFriendQuote": Boolean }
+{ "id": Long, "content": String, "taggedNicknames": [String], "authorNickname": String, "authorBirthYear": String, "authorProfileImage": String, "authorIntroduction": String, "timeAgo": String, "isLiked": Boolean, "isBookmarked": Boolean, "isFriendQuote": Boolean, "myTagStatus": String, "tags": [{ "memberId": Long, "nickname": String, "profileImage": String }] }
 ```
+
+- `myTagStatus`: `TAGGED` (태그됨), `REQUESTED` (태그 요청 대기 중), `NONE` (없음, 거절된 요청 포함)
 
 ### QuoteResponse
 ```json
-{ "id": Long, "content": String, "originalContent": String, "summary": String, "authorName": String, "authorBirthYear": Integer, "taggedMemberNames": [String], "createDate": DateTime }
+{ "id": Long, "content": String, "originalContent": String, "summary": String, "authorName": String, "authorBirthYear": Integer, "taggedMemberNames": [String], "createDate": DateTime, "tags": [{ "memberId": Long, "nickname": String, "profileImage": String }], "isBookmarked": Boolean }
 ```
 
 ### QuoteTagRequestResponse
@@ -143,7 +146,7 @@ Base Path: `/api/archives`
 | 아카이브 | 날짜별 내 명언 조회 | `GET` | `/api/archives` | Query: `date` (`yyyy-MM-dd`) | `List<QuoteResponse>` | 캘린더 화면용 |
 | 아카이브 | 내가 작성한 명언 전체 | `GET` | `/api/archives/me` | 없음 | `List<QuoteResponse>` | originalContent + summary 포함 |
 | 아카이브 | 내가 좋아요한 명언 | `GET` | `/api/archives/likes` | 없음 | `List<QuoteResponse>` | |
-| 아카이브 | 내가 북마크한 명언 | `GET` | `/api/archives/bookmarks` | 없음 | `List<QuoteResponse>` | |
+| 아카이브 | 내가 북마크한 명언 | `GET` | `/api/archives/bookmarks` | Query: `month` (선택, `yyyy-MM`) | `List<QuoteResponse>` | month 지정 시 명언 작성일 기준 해당 월만, 형식 오류 400 |
 
 ---
 
@@ -153,7 +156,7 @@ Base Path: `/api/friends`
 
 | UI 페이지 | 세부 기능 | 메소드 | API Path | 요청 파라미터/Body | 응답 | 참고 |
 |-----------|-----------|--------|----------|-------------------|------|------|
-| 친구 관리 | 친구 요청 전송 | `POST` | `/api/friends/request/{targetId}` | Path: `targetId` (대상 회원 ID) | `{ resultCode }` | HTTP 201 |
+| 친구 관리 | 친구 요청 전송 | `POST` | `/api/friends/request/{targetId}` | Path: `targetId` (대상 회원 ID) | `{ resultCode }` | HTTP 201. 거절된 요청은 양방향 모두 다시 보낼 수 있음 |
 | 친구 관리 | 받은 친구 요청 목록 | `GET` | `/api/friends/requests` | 없음 | `List<FriendRequestResponse>` | |
 | 알림 | 친구 요청 수락 | `POST` | `/api/friends/requests/{requestId}/accept` | Path: `requestId` | `{ resultCode }` | |
 | 알림 | 친구 요청 거절 | `POST` | `/api/friends/requests/{requestId}/reject` | Path: `requestId` | `{ resultCode }` | |
@@ -172,11 +175,11 @@ Base Path: `/api/groups`
 
 | UI 페이지 | 세부 기능 | 메소드 | API Path | 요청 파라미터/Body | 응답 | 참고 |
 |-----------|-----------|--------|----------|-------------------|------|------|
-| 그룹 | 그룹 생성 | `POST` | `/api/groups` | `{ name (max 10자), motto? (max 20자) }` | `GroupResponse` | |
+| 그룹 | 그룹 생성 | `POST` | `/api/groups` | `{ name (max 10자), motto? (max 20자) }` | `GroupResponse` | 이름 10자·좌우명 20자(코드포인트 기준), 이름은 한글·영문·숫자·공백·이모지만 허용 (위반 시 400) |
 | 그룹 | 내가 가입한 그룹 목록 | `GET` | `/api/groups/me` | 없음 | `List<GroupResponse>` | |
 | 그룹 상세 | 그룹 상세 조회 | `GET` | `/api/groups/{groupId}` | Path: `groupId` | `GroupDetailResponse` | 인증 불필요 |
 | 그룹 상세 | 그룹 삭제 | `DELETE` | `/api/groups/{groupId}` | Path: `groupId` | `{ resultCode }` | 그룹장만 가능 |
-| 그룹 상세 | 그룹 좌우명 수정 | `PATCH` | `/api/groups/{groupId}/motto` | Path: `groupId`, Body: `{ motto (max 20자) }` | `{ resultCode }` | 그룹장만 가능 |
+| 그룹 상세 | 그룹 좌우명 수정 | `PATCH` | `/api/groups/{groupId}/motto` | Path: `groupId`, Body: `{ motto (max 20자) }` | `{ resultCode }` | 그룹원 누구나 가능. 20자는 코드포인트 기준 |
 | 그룹 상세 | 그룹 멤버 강제 탈퇴 / 본인 탈퇴 | `DELETE` | `/api/groups/{groupId}/members/{memberId}` | Path: `groupId`, `memberId` | `{ resultCode }` | 그룹장은 강제 퇴장, 본인은 탈퇴 |
 | 그룹 초대 | 친구 그룹 초대 | `POST` | `/api/groups/{groupId}/invite/{friendId}` | Path: `groupId`, `friendId` | `{ resultCode }` | |
 | 그룹 관리 | 특정 그룹의 보낸 초대 대기 목록 조회 | `GET` | `/api/groups/{groupId}/invitations/sent` | Path: `groupId` | `List<GroupJoinRequestResponse>` | 그룹장 전용, PENDING 초대만 조회 |
@@ -206,7 +209,7 @@ Base Path: `/api/groups`
 
 ### GroupInviteResponse
 ```json
-{ "requestId": Long, "groupId": Long, "groupName": String, "groupMotto": String, "inviterNickname": String }
+{ "requestId": Long, "groupId": Long, "groupName": String, "groupMotto": String, "inviterNickname": String, "leaderNickname": String, "memberCount": Integer }
 ```
 
 ---
@@ -243,7 +246,7 @@ Base Path: `/api/settings`
 
 | UI 페이지 | 세부 기능 | 메소드 | API Path | 요청 파라미터/Body | 응답 | 참고 |
 |-----------|-----------|--------|----------|-------------------|------|------|
-| 설정 | 친구/그룹 통합 검색 | `GET` | `/api/settings/search` | Query: `keyword` | `SearchCombinedResponse` | 닉네임 기반 검색 |
+| 설정 | 친구/그룹 통합 검색 | `GET` | `/api/settings/search` | Query: `keyword` | `SearchCombinedResponse` | 닉네임 기반 검색. 공백뿐인 검색어는 빈 결과, `%`·`_`는 문자 그대로 검색. 응답의 회원 항목에 `email` 없음 (이메일 앞부분 검색은 유지) |
 | 설정 | 친구 목록 조회 | `GET` | `/api/settings/friends-list` | 없음 | `List<FriendResponse>` | |
 
 ### FriendResponse
@@ -259,8 +262,27 @@ Base Path: `/api/pokes`
 
 | UI 페이지 | 세부 기능 | 메소드 | API Path | 요청 파라미터/Body | 응답 | 참고 |
 |-----------|-----------|--------|----------|-------------------|------|------|
-| 피드/프로필 | 콕 찌르기 | `POST` | `/api/pokes/{receiverId}` | Path: `receiverId` (대상 회원 ID) | 없음 (200) | |
+| 피드/프로필 | 콕 찌르기 | `POST` | `/api/pokes/{receiverId}` | Path: `receiverId` (대상 회원 ID) | 없음 (200) | 수락된 친구만 가능 (위반 시 400). 수신자의 friendEnabled, pokeEnabled가 모두 켜져 있을 때만 알림 생성 |
 | 통계 | 내가 받은 콕 찌르기 횟수 | `GET` | `/api/pokes/statistics` | 없음 | `{ "receivedCount": Long }` | |
+
+---
+
+## 10. 공지 (Notice)
+
+| UI 페이지 | 세부 기능 | 메소드 | API Path | 요청 파라미터/Body | 응답 | 참고 |
+|-----------|-----------|--------|----------|-------------------|------|------|
+| 공지 | 공지 목록 | `GET` | `/api/notices` | 없음 | `List<NoticeResponse>` | 중요 공지 먼저, 그다음 최신순 |
+| 공지 | 공지 상세 | `GET` | `/api/notices/{id}` | Path: `id` | `NoticeDetailResponse` | 없으면 404 |
+
+### NoticeResponse
+```json
+{ "id": Long, "type": String, "title": String, "content": String, "createDate": String, "important": Boolean }
+```
+
+### NoticeDetailResponse
+```json
+{ "id": Long, "type": String, "title": String, "content": String, "createDate": String, "modifyDate": String, "important": Boolean }
+```
 
 ---
 
@@ -269,17 +291,26 @@ Base Path: `/api/pokes`
 ```json
 {
   "resultCode": "200-1",
-  "msg": "성공 메시지",
+  "message": "성공 메시지",
   "data": { ... }
 }
 ```
 
-- `resultCode` 앞자리: HTTP 상태 코드 의미 (200: 성공, 201: 생성, 400: 잘못된 요청, 401: 인증 실패, 404: 없음)
+- `resultCode` 앞자리: HTTP 상태 코드 의미 (200: 성공, 201: 생성, 400: 잘못된 요청, 401: 인증 실패, 403: 권한 없음·미인증, 404: 없음, 405: 허용되지 않은 메서드, 409: 중복, 413: 업로드 초과, 429: 한도 초과)
 - 일부 엔드포인트는 `RsData` 래핑 없이 데이터 직접 반환
+- 응답이 `{ resultCode }`로 표기된 엔드포인트는 안내 문구를 `message`에 담고 `data`는 `null`이다
+- 오류 응답도 같은 형식이며 HTTP 상태 코드가 `resultCode`와 일치한다. 파라미터 누락·타입 오류·본문 파싱 오류는 400
+- 처리되지 않은 오류는 500이며 `data`에는 `path`만 담긴다 (스택 트레이스 미포함)
 
 ## 인증 방식
 
-- AccessToken: HttpOnly Cookie `accessToken` (만료: 600초)
-- RefreshToken: HttpOnly Cookie `refreshToken` (만료: 30일, UUID)
+- AccessToken: HttpOnly Cookie `accessToken` (만료: 300초, 소셜 로그인 포함)
+- RefreshToken: HttpOnly Cookie `refreshToken` (만료: 30일)
 - SameSite=None, Secure 설정
 - 인증 불필요 경로: `/api/auth/**`
+- 소셜 로그인 시작: `GET /oauth2/authorization/{google|kakao}?mode=login|signup`
+  - `mode=login`: 가입되지 않은 계정이면 실패 처리한다
+  - `mode=signup` 또는 생략: 없으면 가입한다. 이미 가입된 계정이면 새로 만들지 않고 로그인 처리한다 (`isNewUser` 없음)
+- 소셜 로그인 성공: 두 쿠키를 설정하고 `redirect-uri?accessToken=...`로 이동한다. refreshToken은 URL에 없고, 신규 가입이면 `&isNewUser=true`가 붙는다
+- 소셜 로그인 실패: `failure-uri`로 이동하며 원인을 아는 경우 `reason`이 붙는다 (`account_not_found`, `email_not_verified`, 연동 시 `already_linked`, `provider_already_linked`)
+- 쿠키 인증의 변경 요청은 허용 목록에 없는 `Origin`이면 403 (`Origin: null` 포함). `Origin`이 없는 요청은 통과

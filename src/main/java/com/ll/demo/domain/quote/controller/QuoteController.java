@@ -8,6 +8,7 @@ import com.ll.demo.global.dto.PagedResponse;
 import com.ll.demo.global.gemini.GeminiService;
 import com.ll.demo.global.rsData.RsData;
 import com.ll.demo.global.security.SecurityUser;
+import com.ll.demo.global.exceptions.GlobalException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -55,8 +56,12 @@ public class QuoteController {
     ) {
         // 일기 유효성 검사 (15자 이하 / 불량 텍스트 거부)
         quoteService.validateDiaryContent(req.content());
-        memberService.checkAndIncrementAiUsage(user.getMember());
-        return ResponseEntity.ok(new QuoteSummarizeResponse(geminiService.summarizeThree(req.content())));
+        memberService.checkAiUsageAvailable(user.getMember());
+        List<String> summaries = geminiService.summarizeThree(req.content());
+        if (!summaries.isEmpty()) {
+            memberService.incrementAiUsage(user.getMember().getId());
+        }
+        return ResponseEntity.ok(new QuoteSummarizeResponse(summaries));
     }
 
     // AI 사용량 조회 (하루 3회 제한)
@@ -99,7 +104,7 @@ public class QuoteController {
             @RequestParam(value = "groupId", required = false) Long groupId
     ) {
         if (securityUser == null) {
-            throw new RuntimeException("로그인이 필요합니다.");
+            throw new GlobalException("403-1", "로그인이 필요합니다.");
         }
         return ResponseEntity.ok(quoteService.getQuoteList(securityUser.getMember(), date, groupId));
     }
@@ -114,7 +119,7 @@ public class QuoteController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "401-1. 로그인 인증 정보가 유효하지 않습니다.");
         }
         quoteService.requestTag(securityUser.getMember().getId(), quoteId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-3", "태그 요청이 명언 작성자에게 전송되었습니다."));
+        return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-3", "태그 요청이 명언 작성자에게 전송되었습니다.", null));
     }
 
     // 내 태그 요청 상태 확인 (+ 버튼 비활성화 여부용)
@@ -146,7 +151,7 @@ public class QuoteController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         quoteService.acceptTagRequest(user.getMember().getId(), requestId);
-        return ResponseEntity.ok(RsData.of("200", "태그 요청을 수락했습니다."));
+        return ResponseEntity.ok(RsData.of("200", "태그 요청을 수락했습니다.", null));
     }
 
     // 태그 요청 거절
@@ -156,7 +161,7 @@ public class QuoteController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         quoteService.rejectTagRequest(user.getMember().getId(), requestId);
-        return ResponseEntity.ok(RsData.of("200", "태그 요청을 거절했습니다."));
+        return ResponseEntity.ok(RsData.of("200", "태그 요청을 거절했습니다.", null));
     }
 
     // 태그 요청 목록 조회
@@ -177,7 +182,7 @@ public class QuoteController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         quoteService.bookmarkQuote(user.getMember().getId(), quoteId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201", "북마크에 추가되었습니다."));
+        return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201", "북마크에 추가되었습니다.", null));
     }
 
     // 북마크 취소
@@ -188,7 +193,7 @@ public class QuoteController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         quoteService.unbookmarkQuote(user.getMember().getId(), quoteId);
-        return ResponseEntity.ok(RsData.of("200", "북마크가 해제되었습니다."));
+        return ResponseEntity.ok(RsData.of("200", "북마크가 해제되었습니다.", null));
     }
 
     @GetMapping("/feed")
@@ -198,7 +203,7 @@ public class QuoteController {
             @RequestParam(required = false) Long groupId
     ) {
         if (securityUser == null) {
-            throw new RuntimeException("로그인이 필요합니다.");
+            throw new GlobalException("403-1", "로그인이 필요합니다.");
         }
         Long memberId = securityUser.getMember().getId();
         PagedResponse<QuoteDetailResponse> response = quoteService.getFeed(memberId, date, groupId);

@@ -8,13 +8,14 @@ import com.ll.demo.domain.group.group.entity.Group;
 import com.ll.demo.domain.group.group.entity.GroupMember;
 import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
 import com.ll.demo.domain.group.group.repository.GroupRepository;
+import com.ll.demo.domain.member.member.dto.SocialLoginResult;
 import com.ll.demo.domain.member.member.dto.FriendResponse;
 import com.ll.demo.domain.member.member.dto.MemberSearchResponse;
-import com.ll.demo.domain.member.member.dto.ProfileResponse;
-import com.ll.demo.domain.member.member.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.member.member.dto.SearchCombinedResponse;
 import com.ll.demo.domain.member.member.entity.Member;
+import com.ll.demo.domain.member.member.entity.MemberSocialAccount;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
+import com.ll.demo.domain.member.member.repository.MemberSocialAccountRepository;
 import com.ll.demo.domain.member.member.type.MemberProvider;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
@@ -50,10 +51,15 @@ import org.springframework.security.oauth2.core.OAuth2Error;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MemberService {
+    private static final int AI_DAILY_LIMIT = 3;
+    private static final String AI_LIMIT_MESSAGE = "AI 추천은 하루 3회까지만 사용할 수 있습니다.";
+
 
     private static final int NICKNAME_MAX_LENGTH = 10;
     public static final String SOCIAL_ACCOUNT_NOT_FOUND = "account_not_found";
     public static final String SOCIAL_EMAIL_NOT_VERIFIED = "email_not_verified";
+    public static final String SOCIAL_ALREADY_LINKED = "already_linked";
+    public static final String SOCIAL_PROVIDER_ALREADY_LINKED = "provider_already_linked";
 
     private final AuthTokenService authTokenService;
     private final MemberRepository memberRepository;
@@ -66,6 +72,7 @@ public class MemberService {
     private final QuoteTagRepository quoteTagRepository;
     private final QuoteTagRequestRepository quoteTagRequestRepository;
     private final NoticeRepository noticeRepository;
+    private final MemberSocialAccountRepository memberSocialAccountRepository;
 
     // 이메일로 회원 조회
     @Transactional(readOnly = true)
@@ -117,36 +124,6 @@ public class MemberService {
         return memberRepository.findById(id);
     }
 
-    // 내 프로필 조회
-    public ProfileResponse getProfile(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
-
-        return ProfileResponse.of(member);
-    }
-
-    // 프로필 정보 수정
-
-    @Transactional
-    public void updateProfile(Long memberId, ProfileUpdateRequest request, String imageUrl) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
-
-        // 값이 있는 필드만 수정하도록 로직 수정
-        if (request != null) {
-            if (request.getNickname() != null && !request.getNickname().isBlank()) {
-                member.setNickname(request.getNickname());
-            }
-            if (request.getIntroduction() != null) {
-                member.setIntroduction(request.getIntroduction());
-            }
-        }
-
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            member.setProfileImage(imageUrl);
-        }
-    }
-
     //    // 닉네임, 이메일, 그룹명으로 회원 검색
     //    public List<MemberSearchResponse> searchMembers(String keyword, Long currentMemberId) {
     //        List<Member> membersByNicknameOrEmail = memberRepository
@@ -167,13 +144,18 @@ public class MemberService {
 
     // 회원 및 그룹 검색
     public SearchCombinedResponse searchCombined(String keyword, Long currentMemberId) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return SearchCombinedResponse.builder().members(List.of()).groups(List.of()).build();
+        }
+        String likeKeyword = escapeLike(keyword);
+
         // 닉네임or이메일로 검색
         List<Member> membersByNicknameOrEmail = memberRepository
-                .searchMembersByNicknameOrEmailUsername(keyword);
+                .searchMembersByNicknameOrEmailUsername(likeKeyword);
 
         // 그룹명으로 그룹 멤버 검색
         List<Member> membersByGroupName = groupMemberRepository
-                .findMembersByGroupNameContaining(keyword);
+                .findMembersByGroupNameContaining(likeKeyword);
 
         Set<Member> combinedMembers = new HashSet<>(membersByNicknameOrEmail);
         combinedMembers.addAll(membersByGroupName);
@@ -182,7 +164,7 @@ public class MemberService {
                 .filter(m -> !m.getId().equals(currentMemberId))
                 .map(MemberSearchResponse::of)
                 .toList();
-        // 그룹 자체
+        // 그룹 자체 (파생 쿼리는 Spring Data가 LIKE 이스케이프를 처리)
         List<Group> groups = groupRepository.findByNameContainingIgnoreCase(keyword);
 
         List<GroupSearchResponse> groupResponses = groups.stream()
@@ -221,38 +203,57 @@ public class MemberService {
         return refreshToken;
     }
 
-    // AI 추천 횟수 체크 + 증가 (일 3회 제한, 날짜 바뀌면 초기화)
+    private static String escapeLike(String keyword) {
+        return keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_");
+    }
+
+    // 로그아웃: refresh 토큰 또는 인증된 회원 기준으로 저장된 refresh 토큰 제거
     @Transactional
-    public void checkAndIncrementAiUsage(Member member) {
-        LocalDate today = LocalDate.now();
-
-        if (!today.equals(member.getAiUsageDate())) {
-            member.setAiUsageDate(today);
-            member.setAiUsageCount(0);
+    public void clearRefreshToken(String refreshToken, Long memberId) {
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            memberRepository.findByRefreshToken(refreshToken).ifPresent(m -> m.setRefreshToken(null));
         }
-
-        if (member.getAiUsageCount() >= 3) {
-            throw new GlobalException("429-1", "AI 추천은 하루 3회까지만 사용할 수 있습니다.");
+        if (memberId != null) {
+            memberRepository.findById(memberId).ifPresent(m -> m.setRefreshToken(null));
         }
+    }
 
-        member.setAiUsageCount(member.getAiUsageCount() + 1);
-        memberRepository.save(member);
+    // AI 추천 잔여 횟수 확인 (일 3회 제한, 차감은 하지 않음)
+    public void checkAiUsageAvailable(Member member) {
+        if (LocalDate.now().equals(member.getAiUsageDate()) && member.getAiUsageCount() >= AI_DAILY_LIMIT) {
+            throw new GlobalException("429-1", AI_LIMIT_MESSAGE);
+        }
+    }
+
+    // AI 추천 성공 후 횟수 차감 (날짜 바뀌면 초기화, 동시 요청은 조건부 UPDATE로 한도 보장)
+    @Transactional
+    public void incrementAiUsage(Long memberId) {
+        if (memberRepository.incrementAiUsage(memberId, LocalDate.now(), AI_DAILY_LIMIT) == 0) {
+            throw new GlobalException("429-1", AI_LIMIT_MESSAGE);
+        }
     }
 
     // 소셜 로그인: 기존 회원 조회 or 신규 생성
     @Transactional
-    public Member findOrCreateSocialMember(
+    public SocialLoginResult findOrCreateSocialMember(
             MemberProvider provider, String providerId,
             String email, boolean emailVerified, String nickname, String profileImage,
             boolean createIfAbsent) {
 
-        // 1. provider + providerId로 조회
-        Optional<Member> existing = memberRepository.findByProviderAndProviderId(provider, providerId);
-        if (existing.isPresent()) {
-            return existing.get();
+        // 1. 소셜 계정 테이블로 조회
+        Optional<MemberSocialAccount> account = memberSocialAccountRepository.findByProviderAndProviderId(provider, providerId);
+        if (account.isPresent()) {
+            return new SocialLoginResult(account.get().getMember(), false);
         }
 
-        // 2. 동일 이메일의 계정이 있으면, 제공자가 이메일을 인증한 경우에만 provider 연결 후 반환
+        // 2. 기존 members.provider + providerId로 조회
+        Optional<Member> existing = memberRepository.findByProviderAndProviderId(provider, providerId);
+        if (existing.isPresent()) {
+            ensureSocialAccount(existing.get(), provider, providerId);
+            return new SocialLoginResult(existing.get(), false);
+        }
+
+        // 3. 동일 이메일의 계정이 있으면, 제공자가 이메일을 인증한 경우에만 provider 연결 후 반환
         if (email != null) {
             Optional<Member> localMember = memberRepository.findByEmail(email);
             if (localMember.isPresent()) {
@@ -265,7 +266,9 @@ public class MemberService {
                 m.setProviderId(providerId);
                 m.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
                 m.setRefreshToken(null);
-                return memberRepository.save(m);
+                Member saved = memberRepository.save(m);
+                ensureSocialAccount(saved, provider, providerId);
+                return new SocialLoginResult(saved, false);
             }
         }
 
@@ -274,7 +277,7 @@ public class MemberService {
                     new OAuth2Error(SOCIAL_ACCOUNT_NOT_FOUND), "존재하지 않는 계정입니다.");
         }
 
-        // 3. 신규 소셜 회원 생성
+        // 4. 신규 소셜 회원 생성
         String resolvedNickname = limitNickname(nickname);
         if (resolvedNickname == null) {
             resolvedNickname = limitNickname(email != null ? email.split("@")[0] : null);
@@ -290,7 +293,53 @@ public class MemberService {
                 .provider(provider)
                 .providerId(providerId)
                 .build();
-        return memberRepository.save(newMember);
+        Member saved = memberRepository.save(newMember);
+        ensureSocialAccount(saved, provider, providerId);
+        return new SocialLoginResult(saved, true);
+    }
+
+    // 계정 연동: 이미 같은 회원에게 연결되어 있으면 아무것도 하지 않음
+    @Transactional
+    public Member linkSocialAccount(Long memberId, MemberProvider provider, String providerId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new OAuth2AuthenticationException(
+                        new OAuth2Error(SOCIAL_ACCOUNT_NOT_FOUND), "존재하지 않는 계정입니다."));
+
+        Optional<MemberSocialAccount> account = memberSocialAccountRepository.findByProviderAndProviderId(provider, providerId);
+        if (account.isPresent()) {
+            if (!account.get().getMember().getId().equals(memberId)) {
+                throw new OAuth2AuthenticationException(
+                        new OAuth2Error(SOCIAL_ALREADY_LINKED), "다른 회원에게 연결된 소셜 계정입니다.");
+            }
+            return member;
+        }
+
+        boolean usedByOther = memberRepository.findByProviderAndProviderId(provider, providerId)
+                .filter(owner -> !owner.getId().equals(memberId))
+                .isPresent();
+        if (usedByOther) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error(SOCIAL_ALREADY_LINKED), "다른 회원에게 연결된 소셜 계정입니다.");
+        }
+
+        if (memberSocialAccountRepository.existsByMemberAndProvider(member, provider)) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error(SOCIAL_PROVIDER_ALREADY_LINKED), "같은 소셜 서비스의 다른 계정이 이미 연결되어 있습니다.");
+        }
+
+        ensureSocialAccount(member, provider, providerId);
+        return member;
+    }
+
+    private void ensureSocialAccount(Member member, MemberProvider provider, String providerId) {
+        if (memberSocialAccountRepository.existsByMemberAndProvider(member, provider)) {
+            return;
+        }
+        memberSocialAccountRepository.save(MemberSocialAccount.builder()
+                .member(member)
+                .provider(provider)
+                .providerId(providerId)
+                .build());
     }
 
     private String limitNickname(String value) {
@@ -360,6 +409,7 @@ public class MemberService {
             for (Member friend : sunshines) {
                 makeFriendship(guest, friend);
             }
+            makeFriendship(jjang, kju);
 
             // 기존 그룹 생성 - saveAndFlush 이용하여 id 확정
             Group sunshineGroup = groupRepository.saveAndFlush(Group.builder()
@@ -430,9 +480,7 @@ public class MemberService {
 
             quoteTagRepository.save(new QuoteTag(q1, guest));
             quoteTagRepository.save(new QuoteTag(q2, kju));
-            quoteTagRepository.save(new QuoteTag(q2, jjang));
             quoteTagRepository.save(new QuoteTag(q2, guest));
-            quoteTagRepository.save(new QuoteTag(q3, haeoni));
             quoteTagRepository.save(new QuoteTag(q3, guest));
     }
 

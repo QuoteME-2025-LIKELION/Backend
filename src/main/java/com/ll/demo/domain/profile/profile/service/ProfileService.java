@@ -13,6 +13,7 @@ import com.ll.demo.domain.quote.repository.QuoteTagRequestRepository;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
+import com.ll.demo.domain.member.member.repository.MemberSocialAccountRepository;
 import com.ll.demo.domain.notification.repository.NotificationRepository;
 import com.ll.demo.domain.notification.repository.NotificationSettingRepository;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
@@ -22,6 +23,7 @@ import com.ll.demo.domain.profile.profile.dto.ProfileResponse;
 import com.ll.demo.domain.profile.profile.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.profile.profile.dto.AccountUpdateRequest;
 import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
+import com.ll.demo.global.aws.S3Service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -48,6 +50,8 @@ public class ProfileService {
     private final QuoteTagRequestRepository quoteTagRequestRepository;
     private final BookmarkRepository bookmarkRepository;
     private final PokeRepository pokeRepository;
+    private final MemberSocialAccountRepository memberSocialAccountRepository;
+    private final S3Service s3Service;
 
     // 프로필 정보 조회
     @Transactional(readOnly = true)
@@ -57,16 +61,31 @@ public class ProfileService {
         return ProfileResponse.from(member, quoteCount, friendCount);
     }
 
+    public void validateNotGuest(Member member) {
+        if (GUEST_EMAIL.equals(member.getEmail())) {
+            throw new GlobalException("403", "게스트 계정은 수정할 수 없습니다.");
+        }
+    }
+
+    // JSON으로 받는 이미지는 빈 문자열(제거) 또는 우리 버킷 URL만 허용
+    private void validateProfileImageValue(String profileImage) {
+        if (!profileImage.isEmpty() && !profileImage.startsWith(s3Service.profileUrlPrefix())) {
+            throw new GlobalException("400", "프로필 이미지 주소가 올바르지 않습니다.");
+        }
+    }
+
     // 프로필 정보 수정 (imageUrl: S3 업로드 후 받은 URL, null이면 기존 값 유지)
     public ProfileResponse updateProfile(Member member, ProfileUpdateRequest request, String imageUrl) {
+        validateNotGuest(member);
+
         Member persistentMember = memberRepository.findById(member.getId())
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
 
         if (request != null) {
             if (request.nickname() != null && !request.nickname().isBlank()
                     && !request.nickname().equals(persistentMember.getNickname())) {
                 memberRepository.findByNickname(request.nickname())
-                        .ifPresent(m -> { throw new IllegalArgumentException("이미 사용 중인 닉네임입니다."); });
+                        .ifPresent(m -> { throw new GlobalException("409", "이미 사용 중인 닉네임입니다."); });
                 persistentMember.setNickname(request.nickname());
             }
             if (request.introduction() != null) {
@@ -78,6 +97,7 @@ public class ProfileService {
         if (imageUrl != null && !imageUrl.isBlank()) {
             persistentMember.setProfileImage(imageUrl);
         } else if (request != null && request.profileImage() != null) {
+            validateProfileImageValue(request.profileImage());
             persistentMember.setProfileImage(request.profileImage());
         }
 
@@ -86,13 +106,15 @@ public class ProfileService {
 
     // 계정 정보 수정
     public void updateAccountInfo(Member member, AccountUpdateRequest request) {
+        validateNotGuest(member);
+
         Member persistentMember = memberRepository.findById(member.getId())
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
 
         // 이메일 중복 체크
         if (!persistentMember.getEmail().equals(request.email())) {
             memberRepository.findByEmail(request.email()).ifPresent(m -> {
-                throw new RuntimeException("이미 사용 중인 이메일입니다.");
+                throw new GlobalException("409", "이미 사용 중인 이메일입니다.");
             });
         }
 
@@ -105,13 +127,13 @@ public class ProfileService {
     @Transactional(readOnly = true)
     public AccountInfoResponse getAccountInfo(Member member) {
         Member persistentMember = memberRepository.findById(member.getId())
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-        return AccountInfoResponse.from(persistentMember);
+                .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
+        return AccountInfoResponse.from(persistentMember, memberSocialAccountRepository.findAllByMemberOrderById(persistentMember));
     }
     // 계정 삭제
     public void deleteAccount(Member member) {
         Member persistentMember = memberRepository.findById(member.getId())
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
 
         if (GUEST_EMAIL.equals(persistentMember.getEmail())) {
             throw new GlobalException("403", "게스트 계정은 탈퇴할 수 없습니다.");
@@ -119,6 +141,7 @@ public class ProfileService {
 
         handleLedGroups(persistentMember);
 
+        notificationRepository.deleteAllTargetingQuotesOf(persistentMember);
         bookmarkRepository.deleteAllRelatedToMember(persistentMember);
         quoteLikeRepository.deleteAllRelatedToMember(persistentMember);
         quoteTagRepository.deleteAllRelatedToMember(persistentMember);
@@ -130,6 +153,7 @@ public class ProfileService {
         pokeRepository.deleteAllByMember(persistentMember);
         notificationRepository.deleteAllByMember(persistentMember);
         notificationSettingRepository.deleteByMember(persistentMember);
+        memberSocialAccountRepository.deleteAllByMember(persistentMember);
         memberRepository.delete(persistentMember);
     }
 
@@ -143,6 +167,7 @@ public class ProfileService {
             if (successor.isPresent()) {
                 group.setLeader(successor.get());
             } else {
+                notificationRepository.deleteAllTargetingGroup(group.getId());
                 groupRepository.delete(group);
             }
         }

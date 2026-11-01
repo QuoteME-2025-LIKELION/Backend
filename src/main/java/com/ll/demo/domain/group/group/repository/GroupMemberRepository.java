@@ -18,7 +18,7 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
     List<GroupMember> findByMember(Member member); // 내가 가입한 그룹 조회
     List<GroupMember> findByGroup(Group group); // 그룹 찾기
     // 그룹 이름 키워드가 포함된 그룹 멤버
-    @Query("SELECT gm.member FROM GroupMember gm JOIN gm.group g WHERE LOWER(g.name) LIKE LOWER(CONCAT('%', :groupNameKeyword, '%'))")
+    @Query("SELECT gm.member FROM GroupMember gm JOIN gm.group g WHERE LOWER(g.name) LIKE LOWER(CONCAT('%', :groupNameKeyword, '%')) ESCAPE '!'")
     List<Member> findMembersByGroupNameContaining(@Param("groupNameKeyword") String groupNameKeyword);
 
     @Modifying

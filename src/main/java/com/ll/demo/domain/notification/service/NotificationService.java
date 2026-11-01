@@ -10,6 +10,7 @@ import com.ll.demo.domain.notification.repository.NotificationRepository;
 import com.ll.demo.domain.notification.repository.NotificationSettingRepository;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
+import com.ll.demo.global.exceptions.GlobalException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -47,7 +48,7 @@ public class NotificationService {
         return switch (type) {
             case "GROUP_INVITE", "GROUP_JOIN_REQUEST", "GROUP_ACCEPT", "GROUP_REJECT", "GROUP_LEAVE", "GROUP_MOTTO" -> setting.isGroupEnabled();
             case "TAG", "TAG_REQUEST", "TAG_ACCEPTED" -> setting.isTagEnabled();
-            case "POKE" -> setting.isPokeEnabled();
+            case "POKE" -> setting.isFriendEnabled() && setting.isPokeEnabled();
             case "LIKE" -> setting.isLikeEnabled();
             case "QUOTE_REMINDER" -> setting.isQuoteReminderEnabled();
             case "FRIEND_REQUEST", "FRIEND_ACCEPTED", "FRIEND_REJECTED" -> setting.isFriendEnabled();
@@ -93,7 +94,7 @@ public class NotificationService {
         Map<Long, LocalDate> quoteDates = findQuoteDates(notifications);
 
         return notifications.stream()
-                .filter(n -> !isTagType(n) || (n.getTargetId() != null && quoteDates.containsKey(n.getTargetId())))
+                .filter(n -> !hasQuoteTarget(n) || (n.getTargetId() != null && quoteDates.containsKey(n.getTargetId())))
                 .map(n -> new NotificationResponse(n, isTagType(n) ? quoteDates.get(n.getTargetId()) : null))
                 .toList();
     }
@@ -102,9 +103,13 @@ public class NotificationService {
         return notification.getType() != null && TAG_TYPES.contains(notification.getType());
     }
 
+    private static boolean hasQuoteTarget(Notification notification) {
+        return isTagType(notification) || "LIKE".equals(notification.getType());
+    }
+
     private Map<Long, LocalDate> findQuoteDates(List<Notification> notifications) {
         Set<Long> quoteIds = notifications.stream()
-                .filter(n -> isTagType(n) && n.getTargetId() != null)
+                .filter(n -> hasQuoteTarget(n) && n.getTargetId() != null)
                 .map(Notification::getTargetId)
                 .collect(Collectors.toSet());
 
@@ -119,10 +124,10 @@ public class NotificationService {
     @Transactional
     public void markAsRead(Long receiverId, Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("알림을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "알림을 찾을 수 없습니다."));
 
         if (!notification.getReceiver().getId().equals(receiverId)) {
-            throw new RuntimeException("권한이 없습니다.");
+            throw new GlobalException("403", "권한이 없습니다.");
         }
 
         notification.markAsRead();

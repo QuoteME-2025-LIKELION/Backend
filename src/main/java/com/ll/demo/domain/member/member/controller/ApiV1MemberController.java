@@ -97,6 +97,12 @@ public class ApiV1MemberController {
 
     @PostMapping("/logout")
     public RsData<Void> logout(HttpServletResponse response, @AuthenticationPrincipal SecurityUser user) {
+        // 서버에 저장된 refresh 토큰 무효화 (access 토큰 만료 상태에서도 쿠키로 처리)
+        memberService.clearRefreshToken(
+                rq.getCookieValue("refreshToken", ""),
+                user != null ? user.getMember().getId() : null
+        );
+
         // 브라우저 쿠키 삭제
         rq.setCookie(response, "accessToken", "", 0);
         rq.setCookie(response, "refreshToken", "", 0);
@@ -131,18 +137,14 @@ public class ApiV1MemberController {
     // 토큰 재발급
     @PostMapping("/refresh")
     public RsData<LoginResponseBody> refresh(HttpServletRequest request, HttpServletResponse response) {
-        //System.out.println("=== Cookie Debug Start ===");
         String refreshToken = null;
         if (request.getCookies() != null) {
             for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
-                System.out.println("Cookie Name: " + cookie.getName() + ", Value: " + cookie.getValue());
                 if (cookie.getName().equals("refreshToken")) {
                     refreshToken = cookie.getValue();
                 }
             }
         }
-        System.out.println("Found RefreshToken: " + refreshToken);
-        System.out.println("=== Cookie Debug End ===");
 
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new GlobalException("401-2", "리프레시 토큰이 쿠키에 없습니다.");

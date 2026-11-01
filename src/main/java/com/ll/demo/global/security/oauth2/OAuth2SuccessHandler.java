@@ -1,6 +1,8 @@
 package com.ll.demo.global.security.oauth2;
 
+import com.ll.demo.AppConfig;
 import com.ll.demo.domain.member.member.entity.Member;
+import com.ll.demo.domain.member.member.service.MemberService;
 import com.ll.demo.standard.rq.Rq;
 import com.ll.demo.global.security.AuthTokenService; // 패키지 구조에 맞게 주입
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,7 +18,10 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
+    private static final int REFRESH_TOKEN_COOKIE_SEC = 60 * 60 * 24 * 30;
+
     private final AuthTokenService authTokenService;
+    private final MemberService memberService;
     private final Rq rq;
 
     @Value("${custom.oauth2.redirect-uri:http://localhost:5173/oauth2/callback}")
@@ -27,26 +32,29 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
         
+        // 연동이면 토큰을 새로 발급하지 않음
+        Object linkedProvider = request.getAttribute(OAuth2MemberService.LINKED_PROVIDER_ATTRIBUTE);
+        if (linkedProvider != null) {
+            getRedirectStrategy().sendRedirect(request, response, redirectUri + "?linked=" + linkedProvider);
+            return;
+        }
+
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         Member member = oAuth2User.getMember();
 
-        // 1. 기존에 작성하셨던 AuthTokenService의 올바른 토큰 생성 메서드를 직접 호출합니다.
-        // 만약 genToken이 아니라 다른 메서드명(예: genAccessToken)을 사용한다면 컴파일 전에 가볍게 이름만 맞춰주세요.
-        String accessToken = authTokenService.genToken(member, 60 * 30); 
-        String refreshToken = member.getRefreshToken(); // Member 엔티티 내부 필드에서 추출 혹은 필요시 생성 호출
+        int accessTokenExpirationSec = AppConfig.getAccessTokenExpirationSec();
+        String accessToken = authTokenService.genToken(member, accessTokenExpirationSec);
+        String refreshToken = memberService.genRefreshToken(member);
 
-        // 2. Rq 표준 쿠키 인프라를 통해 브라우저에 토큰 저장
-        rq.setCookie("accessToken", accessToken, 60 * 30);
-        if (refreshToken != null) {
-            rq.setCookie("refreshToken", refreshToken, 60 * 60 * 24 * 7);
+        rq.setCookie("accessToken", accessToken, accessTokenExpirationSec);
+        rq.setCookie("refreshToken", refreshToken, REFRESH_TOKEN_COOKIE_SEC);
+
+        // 과도기: access 토큰만 URL로 전달, refresh 토큰은 쿠키로만 전달
+        String targetUrl = redirectUri + "?accessToken=" + accessToken;
+        if (oAuth2User.isNewUser()) {
+            targetUrl += "&isNewUser=true";
         }
 
-        // 3. 프론트엔드가 주소창에서 정상적으로 파싱할 수 있도록 안전하게 변수 바인딩 마감
-        String debugRedirectUri = redirectUri + "?accessToken=" + accessToken;
-        if (refreshToken != null) {
-            debugRedirectUri += "&refreshToken=" + refreshToken;
-        }
-        
-        getRedirectStrategy().sendRedirect(request, response, debugRedirectUri);
+        getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

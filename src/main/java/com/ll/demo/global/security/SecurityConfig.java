@@ -55,7 +55,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                .formLogin(formLogin -> formLogin.permitAll())
+                .formLogin(formLogin -> formLogin.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
                         .sessionFixation(sessionFixation -> sessionFixation.none())
@@ -66,7 +66,7 @@ public class SecurityConfig {
                             response.setStatus(403);
                             response.getWriter().write(
                                     Ut.json.toString(
-                                            RsData.of("403-1", request.getRequestURI() + ", " + authException.getLocalizedMessage())
+                                            RsData.of("403-1", request.getRequestURI() + ", " + authException.getLocalizedMessage(), null)
                                     )
                             );
                         })

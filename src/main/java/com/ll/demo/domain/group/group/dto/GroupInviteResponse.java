@@ -7,7 +7,9 @@ public record GroupInviteResponse(
         Long groupId,
         String groupName,
         String groupMotto,
-        String inviterNickname
+        String inviterNickname,
+        String leaderNickname,
+        int memberCount
 ) {
     public static GroupInviteResponse from(GroupJoinRequest req) {
         String inviterNickname = req.getInviter() != null
@@ -19,7 +21,9 @@ public record GroupInviteResponse(
                 req.getGroup().getId(),
                 req.getGroup().getName(),
                 req.getGroup().getMotto(),
-                inviterNickname
+                inviterNickname,
+                req.getGroup().getLeader().getNickname(),
+                req.getGroup().getMembers().size()
         );
     }
 }

@@ -12,10 +12,12 @@ public class CustomOAuth2User implements OAuth2User {
 
     private final Member member;
     private final Map<String, Object> attributes;
+    private final boolean newUser;
 
-    public CustomOAuth2User(Member member, Map<String, Object> attributes) {
+    public CustomOAuth2User(Member member, Map<String, Object> attributes, boolean newUser) {
         this.member = member;
         this.attributes = attributes;
+        this.newUser = newUser;
     }
 
     @Override

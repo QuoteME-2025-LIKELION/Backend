@@ -10,7 +10,6 @@ public class MemberSearchResponse {
     private Long id;
     private String nickname;
     private String profileImage;
-    private String email;
     private String introduction;
 
     public static MemberSearchResponse of(Member member) {
@@ -18,7 +17,6 @@ public class MemberSearchResponse {
                 .id(member.getId())
                 .nickname(member.getNickname())
                 .profileImage(member.getProfileImage())
-                .email(member.getEmail())
                 .introduction(member.getIntroduction())
                 .build();
     }

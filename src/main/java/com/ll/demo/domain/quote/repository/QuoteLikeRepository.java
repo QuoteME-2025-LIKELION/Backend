@@ -8,11 +8,16 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface QuoteLikeRepository extends JpaRepository<QuoteLike, Long> {
     // 특정 명언에 특정 멤버가 좋아요를 눌렀는지 확인
     boolean existsByQuoteAndMember(Quote quote, Member member);
+
+    @Query("SELECT l.quote.id FROM QuoteLike l WHERE l.member.id = :memberId AND l.quote.id IN :quoteIds")
+    Set<Long> findLikedQuoteIds(@Param("memberId") Long memberId, @Param("quoteIds") List<Long> quoteIds);
 
     // 좋아요 취소를 위해 데이터 조회
     Optional<QuoteLike> findByQuoteAndMember(Quote quote, Member member);

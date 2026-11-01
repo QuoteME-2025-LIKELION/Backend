@@ -1,6 +1,7 @@
 package com.ll.demo.domain.notice.entity;
 
 import com.ll.demo.global.jpa.entity.BaseTime;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -24,4 +25,8 @@ public class Notice extends BaseTime {
     private String title;
 
     private String content;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean important = false;
 }

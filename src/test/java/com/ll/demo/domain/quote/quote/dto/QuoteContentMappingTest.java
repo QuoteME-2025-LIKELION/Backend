@@ -29,7 +29,7 @@ class QuoteContentMappingTest {
     @ValueSource(strings = {"  "})
     @DisplayName("MyQuoteResponse: summary가 없으면 content를 반환한다")
     void myQuote_withoutSummary_returnsContent(String summary) {
-        MyQuoteResponse response = MyQuoteResponse.from(quote("원문", summary), "그룹");
+        MyQuoteResponse response = MyQuoteResponse.from(quote("원문", summary), "그룹", false);
 
         assertThat(response.content()).isEqualTo("원문");
     }
@@ -37,9 +37,18 @@ class QuoteContentMappingTest {
     @Test
     @DisplayName("MyQuoteResponse: summary가 있으면 summary를 반환한다")
     void myQuote_withSummary_returnsSummary() {
-        MyQuoteResponse response = MyQuoteResponse.from(quote("원문", "요약"), "그룹");
+        MyQuoteResponse response = MyQuoteResponse.from(quote("원문", "요약"), "그룹", false);
 
         assertThat(response.content()).isEqualTo("요약");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    @DisplayName("MyQuoteResponse: 북마크 여부를 그대로 담는다")
+    void myQuote_bookmarkedFlag_isMapped(boolean bookmarked) {
+        MyQuoteResponse response = MyQuoteResponse.from(quote("원문", "요약"), "그룹", bookmarked);
+
+        assertThat(response.isBookmarked()).isEqualTo(bookmarked);
     }
 
     @ParameterizedTest
@@ -48,7 +57,7 @@ class QuoteContentMappingTest {
     @DisplayName("QuoteDetailResponse: summary가 없으면 content를 반환한다")
     void detail_withoutSummary_returnsContent(String summary) {
         QuoteDetailResponse response = QuoteDetailResponse.from(
-            quote("원문", summary), List.of(), false, false, true, "NONE"
+            quote("원문", summary), List.of(), false, false, true, "NONE", List.of()
         );
         assertThat(response.content()).isEqualTo("원문");
     }
@@ -56,7 +65,7 @@ class QuoteContentMappingTest {
     @Test
     @DisplayName("QuoteDetailResponse: summary가 있으면 summary를 반환한다")
     void detail_withSummary_returnsSummary() {
-        QuoteDetailResponse response = QuoteDetailResponse.from(quote("원문", "요약"), List.of(), false, false, true, "NONE");
+        QuoteDetailResponse response = QuoteDetailResponse.from(quote("원문", "요약"), List.of(), false, false, true, "NONE", List.of());
 
         assertThat(response.content()).isEqualTo("요약");
     }

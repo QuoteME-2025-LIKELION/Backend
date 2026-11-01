@@ -272,4 +272,52 @@ class GroupServiceTest {
 
         assertThrows(GlobalException.class, () -> groupService.requestToJoin(invitee1, group.getId()));
     }
+
+    @Test
+    void acceptJoinRequest_rejectsInviteTypeRequest() {
+        GroupJoinRequest invite = groupJoinRequestRepository.save(GroupJoinRequest.builder()
+                .group(group).requester(invitee1).inviter(leader)
+                .status(JoinStatus.PENDING).type(InviteType.INVITE).build());
+
+        GlobalException ex = assertThrows(GlobalException.class,
+                () -> groupService.acceptJoinRequest(leader, invite.getId()));
+
+        assertThat(ex.getRsData().getResultCode()).isEqualTo("400");
+        assertThat(groupMemberRepository.existsByGroupAndMember(group, invitee1)).isFalse();
+    }
+
+    @Test
+    void acceptJoinRequest_rejectsAlreadyProcessedRequest() {
+        groupService.requestToJoin(invitee1, group.getId());
+        Long requestId = groupService.getJoinRequests(leader, group.getId()).get(0).requestId();
+        groupService.acceptJoinRequest(leader, requestId);
+
+        assertThrows(GlobalException.class, () -> groupService.acceptJoinRequest(leader, requestId));
+        assertThrows(GlobalException.class, () -> groupService.rejectJoinRequest(leader, requestId));
+        assertThat(notificationRepository
+                .findByReceiverIdAndTypeOrderByCreateDateDesc(invitee1.getId(), "GROUP_ACCEPT")).hasSize(1);
+    }
+
+    @Test
+    void rejectJoinRequest_rejectsInviteTypeRequest() {
+        GroupJoinRequest invite = groupJoinRequestRepository.save(GroupJoinRequest.builder()
+                .group(group).requester(invitee1).inviter(leader)
+                .status(JoinStatus.PENDING).type(InviteType.INVITE).build());
+
+        assertThrows(GlobalException.class, () -> groupService.rejectJoinRequest(leader, invite.getId()));
+        assertThat(groupJoinRequestRepository.findById(invite.getId()).orElseThrow().getStatus())
+                .isEqualTo(JoinStatus.PENDING);
+    }
+
+    @Test
+    void acceptJoinRequest_addsMemberAndNotifies() {
+        groupService.requestToJoin(invitee1, group.getId());
+        Long requestId = groupService.getJoinRequests(leader, group.getId()).get(0).requestId();
+
+        groupService.acceptJoinRequest(leader, requestId);
+
+        assertThat(groupMemberRepository.existsByGroupAndMember(group, invitee1)).isTrue();
+        assertThat(notificationRepository
+                .findByReceiverIdAndTypeOrderByCreateDateDesc(invitee1.getId(), "GROUP_ACCEPT")).hasSize(1);
+    }
 }

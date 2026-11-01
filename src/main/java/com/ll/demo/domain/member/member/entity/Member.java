@@ -4,6 +4,7 @@ import static lombok.AccessLevel.PROTECTED;
 import com.ll.demo.domain.member.member.type.Gender;
 import com.ll.demo.domain.member.member.type.MemberProvider;
 import com.ll.demo.global.jpa.entity.BaseTime;
+import com.ll.demo.global.validation.MaxChars;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -39,8 +40,8 @@ public class Member extends BaseTime {
     @Column(nullable = true)
     private String password;
 
-    @Size(max = 10, message = "닉네임은 10자 이내여야 합니다.")
-    @Column(nullable = true)
+    @MaxChars(value = 10, message = "닉네임은 10자 이내여야 합니다.")
+    @Column(nullable = true, length = 10)
     private String nickname;
 
     @Size(min = 4, max = 4, message = "출생년도는 4자리로 입력해주세요.")
@@ -50,8 +51,8 @@ public class Member extends BaseTime {
     @Column(length = 255)
     private String profileImage;
 
-    @Size(max = 20, message = "자기소개는 20자 이내로 작성해주세요.")
-    @Column(nullable = true)
+    @MaxChars(value = 20, message = "자기소개는 20자 이내로 작성해주세요.")
+    @Column(nullable = true, length = 20)
     private String introduction;
 
     @Column(nullable = true, length = 255)

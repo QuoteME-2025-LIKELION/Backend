@@ -18,7 +18,7 @@ public class NoticeService {
     private final NoticeRepository noticeRepository;
 
     public List<NoticeResponse> findAllNotices() {
-        return noticeRepository.findAll().stream()
+        return noticeRepository.findAllByOrderByImportantDescCreateDateDescIdDesc().stream()
                 .map(NoticeResponse::new)
                 .toList();
     }

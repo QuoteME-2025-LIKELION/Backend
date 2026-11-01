@@ -7,7 +7,8 @@ public record NoticeResponse(
         String type,
         String title,
         String content,
-        String createDate
+        String createDate,
+        boolean important
 ) {
     public NoticeResponse(Notice notice) {
         this(
@@ -15,7 +16,8 @@ public record NoticeResponse(
                 notice.getType().name(),
                 notice.getTitle(),
                 notice.getContent(),
-                notice.getCreateDate().toString()
+                notice.getCreateDate().toString(),
+                notice.isImportant()
         );
     }
 }

@@ -8,7 +8,8 @@ public record NoticeDetailResponse(
         String title,
         String content,
         String createDate,
-        String modifyDate
+        String modifyDate,
+        boolean important
 ) {
     public NoticeDetailResponse(Notice notice) {
         this(
@@ -17,7 +18,8 @@ public record NoticeDetailResponse(
                 notice.getTitle(),
                 notice.getContent(),
                 notice.getCreateDate().toString(),
-                notice.getModifyDate() != null ? notice.getModifyDate().toString() : null
+                notice.getModifyDate() != null ? notice.getModifyDate().toString() : null,
+                notice.isImportant()
         );
     }
 }

@@ -43,7 +43,7 @@ class S3ServiceTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"image/png,png", "image/jpeg,jpg", "image/webp,webp"})
+    @CsvSource({"image/png,png", "image/jpeg,jpg", "image/webp,webp", "image/gif,gif", "image/heic,heic"})
     @DisplayName("키는 profile/UUID.확장자이고 원본 파일명을 쓰지 않는다")
     void key_excludesOriginalFilename(String contentType, String extension) throws IOException {
         String url = s3Service.uploadFile(file("../비밀 사진.exe", contentType));
@@ -56,7 +56,7 @@ class S3ServiceTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"text/plain", "application/pdf", "imagefake"})
+    @ValueSource(strings = {"text/plain", "application/pdf", "imagefake", "image/svg+xml", "image/bmp"})
     @DisplayName("이미지 MIME이 아니면 400, 업로드하지 않음")
     void nonImage_400(String contentType) {
         assertThatThrownBy(() -> s3Service.uploadFile(file("a.png", contentType)))
@@ -66,12 +66,12 @@ class S3ServiceTest {
     }
 
     @Test
-    @DisplayName("파라미터가 붙은 MIME도 확장자만 안전하게 추출")
+    @DisplayName("파라미터가 붙고 대소문자가 다른 MIME도 허용 목록으로 판정")
     void contentTypeWithParameter() throws IOException {
-        s3Service.uploadFile(file("a.svg", "image/svg+xml; charset=utf-8"));
+        s3Service.uploadFile(file("a.png", "IMAGE/PNG; charset=utf-8"));
 
         ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
         verify(s3Template).upload(eq("test-bucket"), key.capture(), any(InputStream.class));
-        assertThat(key.getValue()).matches("profile/[0-9a-f-]{36}\\.svg");
+        assertThat(key.getValue()).matches("profile/[0-9a-f-]{36}\\.png");
     }
 }

@@ -3,9 +3,8 @@ package com.ll.demo.global.aws;
 import com.ll.demo.global.exceptions.GlobalException;
 import io.awspring.cloud.s3.S3Template;
 import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,7 +14,14 @@ import org.springframework.beans.factory.annotation.Value;
 @RequiredArgsConstructor
 public class S3Service {
 
-    private static final Pattern IMAGE_MIME = Pattern.compile("image/([a-zA-Z0-9.-]+)");
+    // SVG는 스크립트를 담을 수 있어 제외
+    private static final Map<String, String> IMAGE_EXTENSIONS = Map.of(
+            "image/jpeg", "jpg",
+            "image/png", "png",
+            "image/webp", "webp",
+            "image/gif", "gif",
+            "image/heic", "heic"
+    );
 
     private final S3Template s3Template; // Spring Cloud AWS가 제공하는 도구
 
@@ -37,12 +43,11 @@ public class S3Service {
     }
 
     private String imageExtension(String contentType) {
-        Matcher matcher = contentType == null ? null : IMAGE_MIME.matcher(contentType);
-        if (matcher == null || !matcher.lookingAt()) {
+        String mimeType = contentType == null ? "" : contentType.split(";")[0].trim().toLowerCase();
+        String extension = IMAGE_EXTENSIONS.get(mimeType);
+        if (extension == null) {
             throw new GlobalException("400", "이미지 파일만 업로드할 수 있습니다.");
         }
-
-        String subtype = matcher.group(1).toLowerCase();
-        return subtype.equals("jpeg") ? "jpg" : subtype;
+        return extension;
     }
 }

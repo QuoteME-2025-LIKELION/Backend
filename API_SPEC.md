@@ -32,9 +32,10 @@ Base Path: `/api/profile`
 | UI 페이지 | 세부 기능 | 메소드 | API Path | 요청 파라미터/Body | 응답 | 참고 |
 |-----------|-----------|--------|----------|-------------------|------|------|
 | 내 프로필 | 내 프로필 조회 | `GET` | `/api/profile` | 없음 | `ProfileResponse` | |
-| 내 프로필 | 프로필 수정 | `PUT` | `/api/profile` | `multipart/form-data`<br>- `data` (JSON): `{ nickname?, introduction?, profileImage? }`<br>- `image` (file, optional): 프로필 이미지 | `ProfileResponse` | 이미지 업로드 시 S3 저장. 닉네임 10자·자기소개 20자(코드포인트 기준), 이미지는 jpeg·png·webp·gif·heic만 5MB까지 (초과 413), 게스트 403, 중복 닉네임 409 |
+| 내 프로필 | 프로필 수정 | `PUT` | `/api/profile` | `multipart/form-data`<br>- `data` (JSON): `{ nickname?, introduction?, profileImage? }`<br>- `image` (file, optional): 프로필 이미지 | `ProfileResponse` | 이미지 업로드 시 S3 저장. JSON `profileImage`는 우리 버킷 URL(`https://{bucket}.s3.ap-northeast-2.amazonaws.com/profile/...`) 또는 빈 문자열(이미지 제거)만 허용 (위반 시 400), 변경하지 않으면 생략. 닉네임 10자·자기소개 20자(코드포인트 기준), 이미지는 jpeg·png·webp·gif·heic만 5MB까지 (초과 413), 게스트 403, 중복 닉네임 409 |
 | 내 프로필 | 계정 정보 조회 | `GET` | `/api/profile/account` | 없음 | `AccountInfoResponse` | 성별, 생년월일, 소셜 연동 상태 |
 | 내 프로필 | 계정 정보 수정 | `PUT` | `/api/profile/account` | `{ email, birthYear, gender }` | `String` ("계정 정보가 수정되었습니다.") | gender: `MALE` \| `FEMALE`, birthYear: 숫자 4자리, 1900~현재 연도 (위반 시 400), 사용 중인 이메일 409. 게스트 403 |
+| 내 프로필 | 소셜 계정 연동 시작 | `GET` | `/api/profile/account/link/{provider}` | Path: `provider` (`google` \| `kakao`) | 302 → `/oauth2/authorization/{provider}` | XHR이 아닌 브라우저 이동으로 호출 (쿠키 인증). 잘못된 provider 400, 게스트 403. 성공하면 `redirect-uri?linked={provider}`로 이동하고 토큰은 새로 발급하지 않음. 실패 reason: `already_linked`, `provider_already_linked`, `account_not_found` |
 | 내 프로필 | 회원 탈퇴 | `DELETE` | `/api/profile/account` | 없음 | `String` ("회원 탈퇴가 완료되었습니다.") | 탈퇴자가 받은/보낸 알림과 알림 설정도 함께 삭제, 응답에서 accessToken, refreshToken 쿠키 만료. 탈퇴 후 기존 토큰은 미인증(403) 처리 |
 | 타인 프로필 | 다른 회원 프로필 조회 | `GET` | `/api/profile/{id}` | Path: `id` (회원 ID) | `MemberResponse` | |
 
@@ -45,7 +46,7 @@ Base Path: `/api/profile`
 
 ### AccountInfoResponse
 ```json
-{ "email": String, "birthYear": String, "gender": "MALE"|"FEMALE", "provider": String, "providerId": String }
+{ "email": String, "birthYear": String, "gender": "MALE"|"FEMALE", "provider": String, "providerId": String, "linkedAccounts": [{ "provider": "GOOGLE"|"KAKAO", "linkedAt": DateTime }] }
 ```
 
 ### MemberResponse
@@ -266,6 +267,25 @@ Base Path: `/api/pokes`
 
 ---
 
+## 10. 공지 (Notice)
+
+| UI 페이지 | 세부 기능 | 메소드 | API Path | 요청 파라미터/Body | 응답 | 참고 |
+|-----------|-----------|--------|----------|-------------------|------|------|
+| 공지 | 공지 목록 | `GET` | `/api/notices` | 없음 | `List<NoticeResponse>` | 중요 공지 먼저, 그다음 최신순 |
+| 공지 | 공지 상세 | `GET` | `/api/notices/{id}` | Path: `id` | `NoticeDetailResponse` | 없으면 404 |
+
+### NoticeResponse
+```json
+{ "id": Long, "type": String, "title": String, "content": String, "createDate": String, "important": Boolean }
+```
+
+### NoticeDetailResponse
+```json
+{ "id": Long, "type": String, "title": String, "content": String, "createDate": String, "modifyDate": String, "important": Boolean }
+```
+
+---
+
 ## 공통 응답 형식 (RsData)
 
 ```json
@@ -292,5 +312,5 @@ Base Path: `/api/pokes`
   - `mode=login`: 가입되지 않은 계정이면 실패 처리한다
   - `mode=signup` 또는 생략: 없으면 가입한다. 이미 가입된 계정이면 새로 만들지 않고 로그인 처리한다 (`isNewUser` 없음)
 - 소셜 로그인 성공: 두 쿠키를 설정하고 `redirect-uri?accessToken=...`로 이동한다. refreshToken은 URL에 없고, 신규 가입이면 `&isNewUser=true`가 붙는다
-- 소셜 로그인 실패: `failure-uri`로 이동하며 원인을 아는 경우 `reason`이 붙는다 (`account_not_found`, `email_not_verified`)
+- 소셜 로그인 실패: `failure-uri`로 이동하며 원인을 아는 경우 `reason`이 붙는다 (`account_not_found`, `email_not_verified`, 연동 시 `already_linked`, `provider_already_linked`)
 - 쿠키 인증의 변경 요청은 허용 목록에 없는 `Origin`이면 403 (`Origin: null` 포함). `Origin`이 없는 요청은 통과

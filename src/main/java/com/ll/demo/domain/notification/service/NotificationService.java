@@ -48,7 +48,7 @@ public class NotificationService {
         return switch (type) {
             case "GROUP_INVITE", "GROUP_JOIN_REQUEST", "GROUP_ACCEPT", "GROUP_REJECT", "GROUP_LEAVE", "GROUP_MOTTO" -> setting.isGroupEnabled();
             case "TAG", "TAG_REQUEST", "TAG_ACCEPTED" -> setting.isTagEnabled();
-            case "POKE" -> setting.isPokeEnabled();
+            case "POKE" -> setting.isFriendEnabled() && setting.isPokeEnabled();
             case "LIKE" -> setting.isLikeEnabled();
             case "QUOTE_REMINDER" -> setting.isQuoteReminderEnabled();
             case "FRIEND_REQUEST", "FRIEND_ACCEPTED", "FRIEND_REJECTED" -> setting.isFriendEnabled();

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Modifying;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -19,6 +20,13 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
 
     @Query("SELECT b.quote FROM Bookmark b WHERE b.member.id = :memberId ORDER BY b.createDate DESC")
     List<Quote> findQuotesByMemberId(@Param("memberId") Long memberId);
+
+    @Query("SELECT b.quote FROM Bookmark b WHERE b.member.id = :memberId AND b.quote.createDate >= :start AND b.quote.createDate < :end ORDER BY b.createDate DESC")
+    List<Quote> findQuotesByMemberIdAndQuoteCreateDate(
+            @Param("memberId") Long memberId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
 
     @Query("SELECT b.quote.id FROM Bookmark b WHERE b.member.id = :memberId AND b.quote.id IN :quoteIds")
     Set<Long> findBookmarkedQuoteIds(@Param("memberId") Long memberId, @Param("quoteIds") List<Long> quoteIds);

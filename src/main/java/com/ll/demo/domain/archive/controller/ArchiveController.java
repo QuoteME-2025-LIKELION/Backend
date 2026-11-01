@@ -65,8 +65,11 @@ public class ArchiveController {
 
     // 내가 북마크한 명언 목록
     @GetMapping("/bookmarks")
-    public ResponseEntity<List<QuoteResponse>> getBookmarkedQuotes(@AuthenticationPrincipal SecurityUser user) {
-        List<QuoteResponse> result = quoteService.findBookmarkedQuotes(user.getMember().getId());
+    public ResponseEntity<List<QuoteResponse>> getBookmarkedQuotes(
+            @RequestParam(value = "month", required = false) String month,
+            @AuthenticationPrincipal SecurityUser user
+    ) {
+        List<QuoteResponse> result = quoteService.findBookmarkedQuotes(user.getMember().getId(), parseMonth(month));
         return ResponseEntity.ok(result);
     }
 

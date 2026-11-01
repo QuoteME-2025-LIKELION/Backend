@@ -361,6 +361,15 @@ public class QuoteService {
         return toArchiveResponses(memberId, bookmarkRepository.findQuotesByMemberId(memberId));
     }
 
+    // 명언 작성일 기준 월별 북마크 조회, month가 없으면 전체
+    public List<QuoteResponse> findBookmarkedQuotes(Long memberId, YearMonth month) {
+        if (month == null) {
+            return findBookmarkedQuotes(memberId);
+        }
+        return toArchiveResponses(memberId, bookmarkRepository.findQuotesByMemberIdAndQuoteCreateDate(
+                memberId, month.atDay(1).atStartOfDay(), month.plusMonths(1).atDay(1).atStartOfDay()));
+    }
+
     // 태그
 
     @Transactional

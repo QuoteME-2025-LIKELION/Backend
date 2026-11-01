@@ -103,6 +103,24 @@ class AiSummarizeUsageTest {
     }
 
     @Test
+    @DisplayName("미처리 예외 응답에 내부 메시지가 노출되지 않음, 키 구조 유지")
+    void unhandledException_hidesInternalMessage() throws Exception {
+        given(geminiService.summarizeThree(anyString()))
+                .willThrow(new IllegalStateException("could not execute statement [select password from member]"));
+
+        String body = summarize()
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.resultCode").value("500-1"))
+                .andExpect(jsonPath("$.statusCode").value(500))
+                .andExpect(jsonPath("$.msg").value("서버 오류가 발생했습니다."))
+                .andExpect(jsonPath("$.data.path").value("/api/quotes/summarize"))
+                .andExpect(jsonPath("$.data.trace").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("select password", "IllegalStateException");
+    }
+
+    @Test
     @DisplayName("오늘 3회 사용 → 429-1, Gemini 미호출")
     void limitReached_notCalled() throws Exception {
         setUsage(3, LocalDate.now());

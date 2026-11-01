@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("resultCode", "500-1");
         body.put("statusCode", 500);
-        body.put("msg", ex.getLocalizedMessage());
+        body.put("msg", "서버 오류가 발생했습니다.");
 
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
         body.put("data", data);

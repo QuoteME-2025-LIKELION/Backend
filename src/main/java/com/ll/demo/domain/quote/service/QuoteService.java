@@ -28,6 +28,7 @@ import java.time.YearMonth;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -217,36 +218,28 @@ public class QuoteService {
         LocalDateTime startDate = date.atStartOfDay();
         LocalDateTime endDate = date.plusDays(1).atStartOfDay();
 
-        List<Quote> quotes = quoteRepository.findAllByDateRange(startDate, endDate);
+        // 나와 대상 작성자의 명언만 DB에서 조회
+        List<Member> authors = new ArrayList<>(targetMembers);
+        authors.add(currentUser);
+        List<Quote> quotes = quoteRepository.findAllByAuthorsInAndDateRange(authors, startDate, endDate);
 
         // 내 명언
-        List<MyQuoteResponse> myQuotes = quotes.stream()
+        List<Quote> mine = quotes.stream()
                 .filter(q -> q.getAuthor().getId().equals(currentUser.getId()))
-                .map(q -> MyQuoteResponse.from(
-                        q,
-                        getQuoteGroupName(q),
-                        bookmarkRepository.existsByMemberAndQuote(currentUser, q)))
+                .toList();
+        Set<Long> myBookmarkedIds = mine.isEmpty()
+                ? Set.of()
+                : bookmarkRepository.findBookmarkedQuoteIds(currentUser.getId(), mine.stream().map(Quote::getId).toList());
+        List<MyQuoteResponse> myQuotes = mine.stream()
+                .map(q -> MyQuoteResponse.from(q, getQuoteGroupName(q), myBookmarkedIds.contains(q.getId())))
                 .toList();
 
-        List<QuoteDetailResponse> otherQuotes = quotes.stream()
-                .filter(q -> !q.getAuthor().getId().equals(currentUser.getId()))
-                .filter(q -> targetMembers.contains(q.getAuthor()))
-                .map(q -> {
-                    boolean isLiked = quoteLikeRepository.existsByQuoteAndMember(q, currentUser);
-                    boolean isBookmarked = bookmarkRepository.existsByMemberAndQuote(currentUser, q);
-                    List<QuoteTag> quoteTags = quoteTagRepository.findAllByQuote(q);
-                    List<String> taggedNicknames = quoteTags.stream()
-                            .map(qt -> qt.getMember().getNickname())
-                            .toList();
-                    List<QuoteTagResponse> tags = quoteTags.stream()
-                            .map(QuoteTagResponse::from)
-                            .toList();
-                    String myTagStatus = resolveMyTagStatus(q, currentUser);
-                    return QuoteDetailResponse.from(
-                            q, taggedNicknames, isLiked, isBookmarked, true, myTagStatus, tags
-                    );
-                })
-                .toList();
+        List<QuoteDetailResponse> otherQuotes = toDetailResponses(
+                quotes.stream()
+                        .filter(q -> !q.getAuthor().getId().equals(currentUser.getId()))
+                        .filter(q -> targetMembers.contains(q.getAuthor()))
+                        .toList(),
+                currentUser.getId());
 
         // authors who have at least one quote in the date range
         Set<Long> authorsWithQuote = quotes.stream()
@@ -589,37 +582,42 @@ public class QuoteService {
             return PagedResponse.empty("아직 아무도 명언을 작성하지 않았어요");
         }
 
-        Member currentUser = memberRepository.findById(memberId)
+        memberRepository.findById(memberId)
                 .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
 
-        List<QuoteDetailResponse> result = quotes.stream()
+        return PagedResponse.of(toDetailResponses(quotes, memberId));
+    }
+
+    // 좋아요·북마크·태그·태그 요청 여부를 목록 단위 IN 쿼리로 한 번에 조회
+    private List<QuoteDetailResponse> toDetailResponses(List<Quote> quotes, Long viewerId) {
+        if (quotes.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> quoteIds = quotes.stream().map(Quote::getId).toList();
+        Set<Long> likedIds = quoteLikeRepository.findLikedQuoteIds(viewerId, quoteIds);
+        Set<Long> bookmarkedIds = bookmarkRepository.findBookmarkedQuoteIds(viewerId, quoteIds);
+        Set<Long> requestedIds = quoteTagRequestRepository.findQuoteIdsByRequesterAndStatus(
+                viewerId, quoteIds, TagRequestStatus.PENDING);
+        Map<Long, List<QuoteTag>> tagsByQuoteId = quoteTagRepository.findAllWithMemberByQuoteIdIn(quoteIds).stream()
+                .collect(Collectors.groupingBy(qt -> qt.getQuote().getId()));
+
+        return quotes.stream()
                 .map(q -> {
-                    boolean isLiked = quoteLikeRepository.existsByQuoteAndMember(q, currentUser);
-                    boolean isBookmarked = bookmarkRepository.existsByMemberAndQuote(currentUser, q);
-                    List<QuoteTag> quoteTags = quoteTagRepository.findAllByQuote(q);
+                    List<QuoteTag> quoteTags = tagsByQuoteId.getOrDefault(q.getId(), List.of());
                     List<String> taggedNicknames = quoteTags.stream()
                             .map(qt -> qt.getMember().getNickname())
                             .toList();
                     List<QuoteTagResponse> tags = quoteTags.stream()
                             .map(QuoteTagResponse::from)
                             .toList();
-                    String myTagStatus = resolveMyTagStatus(q, currentUser);
+                    boolean isTagged = quoteTags.stream().anyMatch(qt -> qt.getMember().getId().equals(viewerId));
+                    String myTagStatus = isTagged ? "TAGGED" : requestedIds.contains(q.getId()) ? "REQUESTED" : "NONE";
                     return QuoteDetailResponse.from(
-                            q, taggedNicknames, isLiked, isBookmarked, true, myTagStatus, tags
+                            q, taggedNicknames, likedIds.contains(q.getId()), bookmarkedIds.contains(q.getId()),
+                            true, myTagStatus, tags
                     );
                 })
                 .toList();
-
-        return PagedResponse.of(result);
-    }
-
-    private String resolveMyTagStatus(Quote quote, Member member) {
-        if (quoteTagRepository.existsByQuoteAndMember(quote, member)) {
-            return "TAGGED";
-        }
-        if (quoteTagRequestRepository.existsByQuoteAndRequesterAndStatus(quote, member, TagRequestStatus.PENDING)) {
-            return "REQUESTED";
-        }
-        return "NONE";
     }
 }

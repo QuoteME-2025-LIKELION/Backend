@@ -14,6 +14,9 @@ public interface QuoteTagRepository extends JpaRepository<QuoteTag, Long> {
     // 특정 글에 달린 태그 모두 삭제
     void deleteAllByQuote(Quote quote);
 
+    @Query("SELECT t FROM QuoteTag t JOIN FETCH t.member WHERE t.quote.id IN :quoteIds ORDER BY t.id")
+    List<QuoteTag> findAllWithMemberByQuoteIdIn(@Param("quoteIds") List<Long> quoteIds);
+
     // 특정 글의 태그 목록 조회
     List<QuoteTag> findAllByQuote(Quote quote);
 

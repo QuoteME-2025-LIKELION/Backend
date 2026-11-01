@@ -195,8 +195,8 @@ class QuoteServiceTest {
         ReflectionTestUtils.setField(friendQuote, "id", 11L);
         ReflectionTestUtils.setField(friendQuote, "createDate", LocalDateTime.now());
 
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of(myQuote, friendQuote));
-        when(quoteLikeRepository.existsByQuoteAndMember(friendQuote, sender)).thenReturn(true);
+        when(quoteRepository.findAllByAuthorsInAndDateRange(any(), any(), any())).thenReturn(List.of(myQuote, friendQuote));
+        when(quoteLikeRepository.findLikedQuoteIds(any(), any())).thenReturn(java.util.Set.of(11L));
         when(friendshipRepository.findAllByMemberAndStatus(sender, com.ll.demo.domain.friendship.friendship.type.FriendshipStatus.ACCEPTED)).thenReturn(List.of(
                 com.ll.demo.domain.friendship.friendship.entity.Friendship.builder()
                         .member(sender)
@@ -204,8 +204,7 @@ class QuoteServiceTest {
                         .status(com.ll.demo.domain.friendship.friendship.type.FriendshipStatus.ACCEPTED)
                         .build()
         ));
-        when(bookmarkRepository.existsByMemberAndQuote(sender, myQuote)).thenReturn(true);
-        when(bookmarkRepository.existsByMemberAndQuote(sender, friendQuote)).thenReturn(false);
+        when(bookmarkRepository.findBookmarkedQuoteIds(any(), any())).thenReturn(java.util.Set.of(10L));
 
         QuoteListDto result = quoteService.getQuoteList(sender, testDate, null);
 
@@ -244,10 +243,7 @@ class QuoteServiceTest {
 
         // quotes: only memberB wrote
         Quote quoteB = Quote.builder().author(memberB).content("b").summary("b").build(); ReflectionTestUtils.setField(quoteB, "id", 100L); ReflectionTestUtils.setField(quoteB, "createDate", LocalDateTime.now());
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of(quoteB));
-        when(bookmarkRepository.existsByMemberAndQuote(memberA, quoteB)).thenReturn(false);
-        when(quoteLikeRepository.existsByQuoteAndMember(quoteB, memberA)).thenReturn(false);
-        when(quoteTagRepository.findAllByQuote(quoteB)).thenReturn(List.of());
+        when(quoteRepository.findAllByAuthorsInAndDateRange(any(), any(), any())).thenReturn(List.of(quoteB));
 
         // call as currentUser = memberA
         QuoteListDto result = quoteService.getQuoteList(memberA, testDate, 10L);
@@ -262,7 +258,7 @@ class QuoteServiceTest {
     void getQuoteList_FriendTarget_NoFriends_ReturnsEmpty() {
         LocalDate testDate = LocalDate.of(2024, 5, 20);
 
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of());
+        when(quoteRepository.findAllByAuthorsInAndDateRange(any(), any(), any())).thenReturn(List.of());
 
         QuoteListDto result = quoteService.getQuoteList(sender, testDate, null);
 
@@ -294,7 +290,7 @@ class QuoteServiceTest {
         Quote quoteB = Quote.builder().author(friendB).content("b").summary("b").build();
         ReflectionTestUtils.setField(quoteB, "id", 100L);
         ReflectionTestUtils.setField(quoteB, "createDate", LocalDateTime.now());
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of(quoteB));
+        when(quoteRepository.findAllByAuthorsInAndDateRange(any(), any(), any())).thenReturn(List.of(quoteB));
 
         QuoteListDto result = quoteService.getQuoteList(sender, testDate, null);
 
@@ -318,7 +314,7 @@ class QuoteServiceTest {
         Quote quoteB = Quote.builder().author(friendB).content("b").summary("b").build();
         ReflectionTestUtils.setField(quoteB, "id", 100L);
         ReflectionTestUtils.setField(quoteB, "createDate", LocalDateTime.now());
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of(quoteB));
+        when(quoteRepository.findAllByAuthorsInAndDateRange(any(), any(), any())).thenReturn(List.of(quoteB));
 
         QuoteListDto result = quoteService.getQuoteList(sender, testDate, null);
 
@@ -348,7 +344,7 @@ class QuoteServiceTest {
         Quote qa = Quote.builder().author(a).content("a").build(); ReflectionTestUtils.setField(qa, "id", 201L); ReflectionTestUtils.setField(qa, "createDate", LocalDateTime.now());
         Quote qb = Quote.builder().author(b).content("b").build(); ReflectionTestUtils.setField(qb, "id", 202L); ReflectionTestUtils.setField(qb, "createDate", LocalDateTime.now());
         Quote qc = Quote.builder().author(c).content("c").build(); ReflectionTestUtils.setField(qc, "id", 203L); ReflectionTestUtils.setField(qc, "createDate", LocalDateTime.now());
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of(qa, qb, qc));
+        when(quoteRepository.findAllByAuthorsInAndDateRange(any(), any(), any())).thenReturn(List.of(qa, qb, qc));
 
         QuoteListDto result = quoteService.getQuoteList(a, testDate, 20L);
         assertThat(result.unwrittenMembers()).isEmpty();
@@ -373,7 +369,7 @@ class QuoteServiceTest {
         when(groupRepository.findById(30L)).thenReturn(java.util.Optional.of(group));
         when(groupMemberRepository.findByGroup(group)).thenReturn(List.of(gmA, gmB, gmC));
 
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of());
+        when(quoteRepository.findAllByAuthorsInAndDateRange(any(), any(), any())).thenReturn(List.of());
 
         QuoteListDto result = quoteService.getQuoteList(a, testDate, 30L);
         assertThat(result.unwrittenMembers()).hasSize(2);
@@ -400,7 +396,7 @@ class QuoteServiceTest {
 
         Quote q1 = Quote.builder().author(b).content("b1").build(); ReflectionTestUtils.setField(q1, "id", 301L); ReflectionTestUtils.setField(q1, "createDate", LocalDateTime.now());
         Quote q2 = Quote.builder().author(b).content("b2").build(); ReflectionTestUtils.setField(q2, "id", 302L); ReflectionTestUtils.setField(q2, "createDate", LocalDateTime.now());
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of(q1, q2));
+        when(quoteRepository.findAllByAuthorsInAndDateRange(any(), any(), any())).thenReturn(List.of(q1, q2));
 
         QuoteListDto result = quoteService.getQuoteList(a, testDate, 40L);
         // b wrote multiple quotes; since b is the only target member (a is current user and excluded), unwrittenMembers should be empty
@@ -413,13 +409,13 @@ class QuoteServiceTest {
         LocalDate testDate = LocalDate.of(2026, 8, 29);
 
         // call
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of());
+        when(quoteRepository.findAllByAuthorsInAndDateRange(any(), any(), any())).thenReturn(List.of());
 
         quoteService.getQuoteList(sender, testDate, null);
 
         ArgumentCaptor<java.time.LocalDateTime> captor1 = ArgumentCaptor.forClass(java.time.LocalDateTime.class);
         ArgumentCaptor<java.time.LocalDateTime> captor2 = ArgumentCaptor.forClass(java.time.LocalDateTime.class);
-        verify(quoteRepository, times(1)).findAllByDateRange(captor1.capture(), captor2.capture());
+        verify(quoteRepository, times(1)).findAllByAuthorsInAndDateRange(any(), captor1.capture(), captor2.capture());
 
         java.time.LocalDateTime start = captor1.getValue();
         java.time.LocalDateTime end = captor2.getValue();
@@ -459,7 +455,7 @@ class QuoteServiceTest {
         GlobalException ex = assertThrows(GlobalException.class, () -> quoteService.getQuoteList(sender, testDate, 50L));
 
         assertThat(ex.getRsData().getStatusCode()).isEqualTo(403);
-        verify(quoteRepository, never()).findAllByDateRange(any(), any());
+        verify(quoteRepository, never()).findAllByAuthorsInAndDateRange(any(), any(), any());
     }
 
     @Test
@@ -473,7 +469,7 @@ class QuoteServiceTest {
         when(groupRepository.findById(60L)).thenReturn(Optional.of(group));
         when(groupMemberRepository.findByGroup(group))
                 .thenReturn(List.of(new GroupMember(group, sender), new GroupMember(group, author)));
-        when(quoteRepository.findAllByDateRange(any(), any())).thenReturn(List.of(testQuote));
+        when(quoteRepository.findAllByAuthorsInAndDateRange(any(), any(), any())).thenReturn(List.of(testQuote));
 
         QuoteListDto result = quoteService.getQuoteList(sender, testDate, 60L);
 
@@ -608,7 +604,7 @@ class QuoteServiceTest {
     @Test
     @DisplayName("성공: 피드의 myTagStatus는 태그되어 있으면 TAGGED다")
     void getFeed_myTagStatus_tagged() {
-        when(quoteTagRepository.existsByQuoteAndMember(testQuote, sender)).thenReturn(true);
+        when(quoteTagRepository.findAllWithMemberByQuoteIdIn(any())).thenReturn(List.of(new QuoteTag(testQuote, sender)));
 
         assertThat(getSingleFeedItem().myTagStatus()).isEqualTo("TAGGED");
     }
@@ -616,7 +612,7 @@ class QuoteServiceTest {
     @Test
     @DisplayName("성공: 피드의 myTagStatus는 태그되지 않고 요청 이력이 있으면 REQUESTED다")
     void getFeed_myTagStatus_requested() {
-        when(quoteTagRequestRepository.existsByQuoteAndRequesterAndStatus(testQuote, sender, TagRequestStatus.PENDING)).thenReturn(true);
+        when(quoteTagRequestRepository.findQuoteIdsByRequesterAndStatus(any(), any(), any())).thenReturn(java.util.Set.of(testQuote.getId()));
 
         assertThat(getSingleFeedItem().myTagStatus()).isEqualTo("REQUESTED");
     }

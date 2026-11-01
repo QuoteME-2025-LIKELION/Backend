@@ -21,13 +21,17 @@ public record QuoteResponse(
                 quote.getOriginalContent(),
                 quote.getSummary(),
                 quote.getAuthor().getNickname(),
-                quote.getAuthor().getBirthYear() != null
-                        ? Integer.valueOf(quote.getAuthor().getBirthYear()) : null,
+                parseBirthYear(quote.getAuthor().getBirthYear()),
                 quote.getQuoteTags().stream()
                                 .map(tag -> tag.getMember().getName())
                                 .toList(),
                 quote.getCreateDate()
         );
+    }
+
+    // 과거에 저장된 숫자가 아닌 값은 null로 응답
+    private static Integer parseBirthYear(String birthYear) {
+        return birthYear != null && birthYear.matches("\\d{1,9}") ? Integer.valueOf(birthYear) : null;
     }
 
     public static QuoteResponse from(Quote quote) {

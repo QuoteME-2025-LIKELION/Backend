@@ -4,6 +4,10 @@ spring:
   output:
     ansi:
       enabled: ALWAYS
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   profiles:
     active: local
   config:

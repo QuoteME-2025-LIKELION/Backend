@@ -37,17 +37,27 @@ public class FriendshipService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "자기 자신에게 요청할 수 없습니다.");
         }
 
-        // 양방향 모두 이미 레코드가 있으면 차단 (이미 친구이거나 대기 중)
-        if (friendshipRepository.existsByMemberAndFriend(requester, target) ||
-                friendshipRepository.existsByMemberAndFriend(target, requester)) {
+        Friendship sent = friendshipRepository.findByMemberAndFriend(requester, target).orElse(null);
+        Friendship received = friendshipRepository.findByMemberAndFriend(target, requester).orElse(null);
+
+        // 양방향 모두 거절 외 레코드가 있으면 차단 (이미 친구이거나 대기 중)
+        if (isActive(sent) || isActive(received)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 친구이거나 대기 중인 요청이 있습니다.");
         }
 
-        friendshipRepository.save(Friendship.builder()
-                .member(requester)
-                .friend(target)
-                .status(FriendshipStatus.REQUESTED)
-                .build());
+        // 거절된 뒤에는 다시 요청할 수 있음
+        if (received != null) {
+            friendshipRepository.delete(received);
+        }
+        if (sent != null) {
+            sent.updateStatus(FriendshipStatus.REQUESTED);
+        } else {
+            friendshipRepository.save(Friendship.builder()
+                    .member(requester)
+                    .friend(target)
+                    .status(FriendshipStatus.REQUESTED)
+                    .build());
+        }
 
         notificationService.create(
                 target,
@@ -125,6 +135,10 @@ public class FriendshipService {
                 me.getNickname() + "님이 친구 요청을 거절했습니다.",
                 me.getId()
         );
+    }
+
+    private boolean isActive(Friendship friendship) {
+        return friendship != null && friendship.getStatus() != FriendshipStatus.REJECTED;
     }
 
     // 친구 삭제

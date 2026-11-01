@@ -60,13 +60,13 @@ public class ProfileService {
     // 프로필 정보 수정 (imageUrl: S3 업로드 후 받은 URL, null이면 기존 값 유지)
     public ProfileResponse updateProfile(Member member, ProfileUpdateRequest request, String imageUrl) {
         Member persistentMember = memberRepository.findById(member.getId())
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
 
         if (request != null) {
             if (request.nickname() != null && !request.nickname().isBlank()
                     && !request.nickname().equals(persistentMember.getNickname())) {
                 memberRepository.findByNickname(request.nickname())
-                        .ifPresent(m -> { throw new IllegalArgumentException("이미 사용 중인 닉네임입니다."); });
+                        .ifPresent(m -> { throw new GlobalException("409", "이미 사용 중인 닉네임입니다."); });
                 persistentMember.setNickname(request.nickname());
             }
             if (request.introduction() != null) {
@@ -87,12 +87,12 @@ public class ProfileService {
     // 계정 정보 수정
     public void updateAccountInfo(Member member, AccountUpdateRequest request) {
         Member persistentMember = memberRepository.findById(member.getId())
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
 
         // 이메일 중복 체크
         if (!persistentMember.getEmail().equals(request.email())) {
             memberRepository.findByEmail(request.email()).ifPresent(m -> {
-                throw new RuntimeException("이미 사용 중인 이메일입니다.");
+                throw new GlobalException("409", "이미 사용 중인 이메일입니다.");
             });
         }
 
@@ -105,13 +105,13 @@ public class ProfileService {
     @Transactional(readOnly = true)
     public AccountInfoResponse getAccountInfo(Member member) {
         Member persistentMember = memberRepository.findById(member.getId())
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
         return AccountInfoResponse.from(persistentMember);
     }
     // 계정 삭제
     public void deleteAccount(Member member) {
         Member persistentMember = memberRepository.findById(member.getId())
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
 
         if (GUEST_EMAIL.equals(persistentMember.getEmail())) {
             throw new GlobalException("403", "게스트 계정은 탈퇴할 수 없습니다.");

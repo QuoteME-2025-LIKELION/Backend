@@ -102,7 +102,7 @@ public class QuoteService {
         validateOneQuotePerDay(authorId);
 
         Member author = memberRepository.findById(authorId)
-                .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
 
         Quote quote = Quote.builder()
                 .author(author)
@@ -116,7 +116,7 @@ public class QuoteService {
         if (taggedMemberIds != null && !taggedMemberIds.isEmpty()) {
             for (Long memberId : taggedMemberIds.stream().distinct().toList()) {
                 Member taggedMember = memberRepository.findById(memberId)
-                        .orElseThrow(() -> new RuntimeException("태그된 회원을 찾을 수 없습니다."));
+                        .orElseThrow(() -> new GlobalException("404", "태그된 회원을 찾을 수 없습니다."));
 
                 quoteTagRepository.save(new QuoteTag(quote, taggedMember));
 
@@ -164,7 +164,7 @@ public class QuoteService {
     @Transactional
     public void likeQuote(Member member, Long quoteId) {
         Quote quote = quoteRepository.findById(quoteId)
-                .orElseThrow(() -> new RuntimeException("명언을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "명언을 찾을 수 없습니다."));
 
         if (quoteLikeRepository.existsByQuoteAndMember(quote, member)) {
             return;
@@ -186,7 +186,7 @@ public class QuoteService {
     @Transactional
     public void unlikeQuote(Member member, Long quoteId) {
         Quote quote = quoteRepository.findById(quoteId)
-                .orElseThrow(() -> new RuntimeException("명언을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "명언을 찾을 수 없습니다."));
 
         quoteLikeRepository.findByQuoteAndMember(quote, member)
                 .ifPresent(quoteLikeRepository::delete);
@@ -391,16 +391,16 @@ public class QuoteService {
     @Transactional
     public void requestTag(Long requesterId, Long quoteId) {
         Quote quote = quoteRepository.findById(quoteId)
-                .orElseThrow(() -> new RuntimeException("명언을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "명언을 찾을 수 없습니다."));
 
         Member requester = memberRepository.findById(requesterId)
-                .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "회원을 찾을 수 없습니다."));
 
         if (quoteTagRepository.existsByQuoteAndMember(quote, requester)) {
             throw new GlobalException("400-2", "이미 태그된 명언입니다.");
         }
         if (quote.getAuthor().getId().equals(requesterId)) {
-            throw new RuntimeException("본인 글에는 태그 요청을 할 수 없습니다.");
+            throw new GlobalException("400", "본인 글에는 태그 요청을 할 수 없습니다.");
         }
         if (quoteTagRequestRepository.existsByQuoteAndRequester(quote, requester)) {
             throw new GlobalException("400-1", "이미 태그 요청을 보냈습니다.");
@@ -499,10 +499,10 @@ public class QuoteService {
     @Transactional
     public void poke(Member sender, Long receiverId) {
         Member receiver = memberRepository.findById(receiverId)
-                .orElseThrow(() -> new RuntimeException("대상 회원을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "대상 회원을 찾을 수 없습니다."));
 
         if (sender.getId().equals(receiverId)) {
-            throw new RuntimeException("자기 자신은 콕 찌를 수 없습니다.");
+            throw new GlobalException("400", "자기 자신은 콕 찌를 수 없습니다.");
         }
 
         notificationService.create(

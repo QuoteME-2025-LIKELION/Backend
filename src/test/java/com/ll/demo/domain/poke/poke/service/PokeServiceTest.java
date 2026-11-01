@@ -5,6 +5,7 @@ import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
 import com.ll.demo.domain.poke.repository.PokeRepository;
 import com.ll.demo.domain.poke.service.PokeService;
+import com.ll.demo.global.exceptions.GlobalException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,8 +66,8 @@ class PokeServiceTest {
     void poke_Fail_Self() {
         // when & then
         assertThatThrownBy(() -> pokeService.poke(1L, 1L))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("자기 자신은 찌를 수 없습니다.");
+                .isInstanceOf(GlobalException.class)
+                .hasMessageContaining("자기 자신은 찌를 수 없습니다.");
     }
 
     @Test
@@ -111,7 +112,7 @@ class PokeServiceTest {
     void poke_Self_Fail() {
         // 실행 & 검증
         assertThatThrownBy(() -> pokeService.poke(1L, 1L))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(GlobalException.class);
 
         // 알림이나 저장이 절대 호출되면 안 됨
         verify(pokeRepository, never()).save(any());

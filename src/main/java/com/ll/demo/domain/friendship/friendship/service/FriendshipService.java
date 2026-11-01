@@ -8,6 +8,7 @@ import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
 import com.ll.demo.domain.friendship.friendship.type.FriendRequestDirection;
+import com.ll.demo.global.exceptions.GlobalException;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -130,7 +131,7 @@ public class FriendshipService {
     @Transactional
     public void removeFriend(Member actor, Long friendId) {
         Member friend = memberRepository.findById(friendId)
-                .orElseThrow(() -> new RuntimeException("해당 회원을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "해당 회원을 찾을 수 없습니다."));
         friendshipRepository.deleteByMemberAndFriend(actor, friend);
         friendshipRepository.deleteByMemberAndFriend(friend, actor);
     }

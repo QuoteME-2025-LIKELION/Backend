@@ -5,6 +5,7 @@ import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
 import com.ll.demo.domain.poke.entity.Poke;
 import com.ll.demo.domain.poke.repository.PokeRepository;
+import com.ll.demo.global.exceptions.GlobalException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,14 +24,14 @@ public class PokeService {
     public boolean poke(Long senderId, Long receiverId) {
         // 자기 자신을 찌를 순 없음
         if (senderId.equals(receiverId)) {
-            throw new IllegalArgumentException("자기 자신은 찌를 수 없습니다.");
+            throw new GlobalException("400", "자기 자신은 찌를 수 없습니다.");
         }
 
         Member sender = memberRepository.findById(senderId)
-                .orElseThrow(() -> new RuntimeException("보내는 회원을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "보내는 회원을 찾을 수 없습니다."));
 
         Member receiver = memberRepository.findById(receiverId)
-                .orElseThrow(() -> new RuntimeException("받는 회원을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "받는 회원을 찾을 수 없습니다."));
 
         // (옵션) 하루에 한 번만 찌르기 가능하게 하려면 여기에 검증 로직 추가
 

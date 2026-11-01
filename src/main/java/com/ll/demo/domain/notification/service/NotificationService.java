@@ -10,6 +10,7 @@ import com.ll.demo.domain.notification.repository.NotificationRepository;
 import com.ll.demo.domain.notification.repository.NotificationSettingRepository;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
+import com.ll.demo.global.exceptions.GlobalException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -119,10 +120,10 @@ public class NotificationService {
     @Transactional
     public void markAsRead(Long receiverId, Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("알림을 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("404", "알림을 찾을 수 없습니다."));
 
         if (!notification.getReceiver().getId().equals(receiverId)) {
-            throw new RuntimeException("권한이 없습니다.");
+            throw new GlobalException("403", "권한이 없습니다.");
         }
 
         notification.markAsRead();

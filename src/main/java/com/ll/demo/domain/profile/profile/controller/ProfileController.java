@@ -41,6 +41,8 @@ public class ProfileController {
             @Valid @RequestPart(value = "data", required = false) ProfileUpdateRequest request,
             @RequestPart(value = "image", required = false) MultipartFile image
     ) throws IOException {
+        // 업로드 전에 차단해 S3에 고아 파일이 남지 않게 함
+        profileService.validateNotGuest(securityUser.getMember());
         String imageUrl = (image != null && !image.isEmpty()) ? s3Service.uploadFile(image) : null;
         return ResponseEntity.ok(profileService.updateProfile(securityUser.getMember(), request, imageUrl));
     }

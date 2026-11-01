@@ -57,8 +57,16 @@ public class ProfileService {
         return ProfileResponse.from(member, quoteCount, friendCount);
     }
 
+    public void validateNotGuest(Member member) {
+        if (GUEST_EMAIL.equals(member.getEmail())) {
+            throw new GlobalException("403", "게스트 계정은 수정할 수 없습니다.");
+        }
+    }
+
     // 프로필 정보 수정 (imageUrl: S3 업로드 후 받은 URL, null이면 기존 값 유지)
     public ProfileResponse updateProfile(Member member, ProfileUpdateRequest request, String imageUrl) {
+        validateNotGuest(member);
+
         Member persistentMember = memberRepository.findById(member.getId())
                 .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
 
@@ -86,6 +94,8 @@ public class ProfileService {
 
     // 계정 정보 수정
     public void updateAccountInfo(Member member, AccountUpdateRequest request) {
+        validateNotGuest(member);
+
         Member persistentMember = memberRepository.findById(member.getId())
                 .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
 

@@ -288,5 +288,9 @@ Base Path: `/api/pokes`
 - RefreshToken: HttpOnly Cookie `refreshToken` (만료: 30일)
 - SameSite=None, Secure 설정
 - 인증 불필요 경로: `/api/auth/**`
+- 소셜 로그인 시작: `GET /oauth2/authorization/{google|kakao}?mode=login|signup`
+  - `mode=login`: 가입되지 않은 계정이면 실패 처리한다
+  - `mode=signup` 또는 생략: 없으면 가입한다. 이미 가입된 계정이면 새로 만들지 않고 로그인 처리한다 (`isNewUser` 없음)
 - 소셜 로그인 성공: 두 쿠키를 설정하고 `redirect-uri?accessToken=...`로 이동한다. refreshToken은 URL에 없고, 신규 가입이면 `&isNewUser=true`가 붙는다
+- 소셜 로그인 실패: `failure-uri`로 이동하며 원인을 아는 경우 `reason`이 붙는다 (`account_not_found`, `email_not_verified`)
 - 쿠키 인증의 변경 요청은 허용 목록에 없는 `Origin`이면 403 (`Origin: null` 포함). `Origin`이 없는 요청은 통과

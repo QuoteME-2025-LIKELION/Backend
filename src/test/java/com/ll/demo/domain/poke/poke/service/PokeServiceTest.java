@@ -1,5 +1,7 @@
 package com.ll.demo.domain.poke.poke.service;
 
+import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
+import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
@@ -28,6 +30,7 @@ class PokeServiceTest {
     @Mock private PokeRepository pokeRepository;
     @Mock private MemberRepository memberRepository;
     @Mock private NotificationService notificationService;
+    @Mock private FriendshipRepository friendshipRepository;
 
     @InjectMocks private PokeService pokeService;
 
@@ -49,6 +52,7 @@ class PokeServiceTest {
         // given
         when(memberRepository.findById(1L)).thenReturn(Optional.of(sender));
         when(memberRepository.findById(2L)).thenReturn(Optional.of(receiver));
+        when(friendshipRepository.existsByMemberAndFriendAndStatus(sender, receiver, FriendshipStatus.ACCEPTED)).thenReturn(true);
 
         // when
         boolean result = pokeService.poke(1L, 2L);
@@ -84,11 +88,27 @@ class PokeServiceTest {
     }
 
     @Test
+    @DisplayName("실패: 수락된 친구가 아니면 400이고 저장·알림이 없다")
+    void poke_Fail_NotFriend() {
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(sender));
+        when(memberRepository.findById(2L)).thenReturn(Optional.of(receiver));
+        when(friendshipRepository.existsByMemberAndFriendAndStatus(sender, receiver, FriendshipStatus.ACCEPTED)).thenReturn(false);
+
+        assertThatThrownBy(() -> pokeService.poke(1L, 2L))
+                .isInstanceOf(GlobalException.class)
+                .hasMessageContaining("친구만 찌를 수 있습니다.");
+
+        verify(pokeRepository, never()).save(any());
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
     @DisplayName("성공: 콕 찌르기 시 DB 저장과 알림 발송이 동시에 일어나야 한다")
     void poke_Full_Success() {
         // 1. 준비 (Given)
         when(memberRepository.findById(1L)).thenReturn(Optional.of(sender));
         when(memberRepository.findById(2L)).thenReturn(Optional.of(receiver));
+        when(friendshipRepository.existsByMemberAndFriendAndStatus(sender, receiver, FriendshipStatus.ACCEPTED)).thenReturn(true);
 
         // 2. 실행 (When)
         boolean result = pokeService.poke(1L, 2L);

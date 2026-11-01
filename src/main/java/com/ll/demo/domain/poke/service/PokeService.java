@@ -1,5 +1,7 @@
 package com.ll.demo.domain.poke.service;
 
+import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
+import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
@@ -18,6 +20,7 @@ public class PokeService {
     private final PokeRepository pokeRepository;
     private final MemberRepository memberRepository;
     private final NotificationService notificationService;
+    private final FriendshipRepository friendshipRepository;
 
     //1. 콕 찌르기 (저장)
     @Transactional
@@ -32,6 +35,10 @@ public class PokeService {
 
         Member receiver = memberRepository.findById(receiverId)
                 .orElseThrow(() -> new GlobalException("404", "받는 회원을 찾을 수 없습니다."));
+
+        if (!friendshipRepository.existsByMemberAndFriendAndStatus(sender, receiver, FriendshipStatus.ACCEPTED)) {
+            throw new GlobalException("400", "친구만 찌를 수 있습니다.");
+        }
 
         // (옵션) 하루에 한 번만 찌르기 가능하게 하려면 여기에 검증 로직 추가
 

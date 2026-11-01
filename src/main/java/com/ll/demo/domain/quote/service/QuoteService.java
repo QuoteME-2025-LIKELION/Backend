@@ -233,12 +233,16 @@ public class QuoteService {
                 .map(q -> {
                     boolean isLiked = quoteLikeRepository.existsByQuoteAndMember(q, currentUser);
                     boolean isBookmarked = bookmarkRepository.existsByMemberAndQuote(currentUser, q);
-                    List<String> taggedNicknames = quoteTagRepository.findAllByQuote(q).stream()
+                    List<QuoteTag> quoteTags = quoteTagRepository.findAllByQuote(q);
+                    List<String> taggedNicknames = quoteTags.stream()
                             .map(qt -> qt.getMember().getNickname())
+                            .toList();
+                    List<QuoteTagResponse> tags = quoteTags.stream()
+                            .map(QuoteTagResponse::from)
                             .toList();
                     String myTagStatus = resolveMyTagStatus(q, currentUser);
                     return QuoteDetailResponse.from(
-                            q, taggedNicknames, isLiked, isBookmarked, true, myTagStatus
+                            q, taggedNicknames, isLiked, isBookmarked, true, myTagStatus, tags
                     );
                 })
                 .toList();
@@ -557,12 +561,16 @@ public class QuoteService {
                 .map(q -> {
                     boolean isLiked = quoteLikeRepository.existsByQuoteAndMember(q, currentUser);
                     boolean isBookmarked = bookmarkRepository.existsByMemberAndQuote(currentUser, q);
-                    List<String> taggedNicknames = quoteTagRepository.findAllByQuote(q).stream()
+                    List<QuoteTag> quoteTags = quoteTagRepository.findAllByQuote(q);
+                    List<String> taggedNicknames = quoteTags.stream()
                             .map(qt -> qt.getMember().getNickname())
+                            .toList();
+                    List<QuoteTagResponse> tags = quoteTags.stream()
+                            .map(QuoteTagResponse::from)
                             .toList();
                     String myTagStatus = resolveMyTagStatus(q, currentUser);
                     return QuoteDetailResponse.from(
-                            q, taggedNicknames, isLiked, isBookmarked, true, myTagStatus
+                            q, taggedNicknames, isLiked, isBookmarked, true, myTagStatus, tags
                     );
                 })
                 .toList();

@@ -79,7 +79,7 @@ class QuoteTagDetailResponseTest {
     @DisplayName("피드 응답: 기존 닉네임 유지, tags 추가")
     void feed() throws Exception {
         assertTag(getAs(friend, "/api/quotes/feed")
-                .andExpect(jsonPath("$.data.content[0].taggedNicknames[0]").value("tagged")), "$.data.content[0]");
+                .andExpect(jsonPath("$.data.items[0].taggedNicknames[0]").value("tagged")), "$.data.items[0]");
     }
 
     @Test

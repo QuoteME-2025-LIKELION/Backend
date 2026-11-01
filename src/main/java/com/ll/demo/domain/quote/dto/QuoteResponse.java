@@ -12,7 +12,8 @@ public record QuoteResponse(
         String authorName,
         Integer authorBirthYear,
         List<String> taggedMemberNames,
-        LocalDateTime createDate
+        LocalDateTime createDate,
+        List<QuoteTagResponse> tags
 ) {
     public QuoteResponse(Quote quote) {
         this(
@@ -25,7 +26,10 @@ public record QuoteResponse(
                 quote.getQuoteTags().stream()
                                 .map(tag -> tag.getMember().getName())
                                 .toList(),
-                quote.getCreateDate()
+                quote.getCreateDate(),
+                quote.getQuoteTags().stream()
+                                .map(QuoteTagResponse::from)
+                                .toList()
         );
     }
 

@@ -57,7 +57,7 @@ class QuoteContentMappingTest {
     @DisplayName("QuoteDetailResponse: summary가 없으면 content를 반환한다")
     void detail_withoutSummary_returnsContent(String summary) {
         QuoteDetailResponse response = QuoteDetailResponse.from(
-            quote("원문", summary), List.of(), false, false, true, "NONE"
+            quote("원문", summary), List.of(), false, false, true, "NONE", List.of()
         );
         assertThat(response.content()).isEqualTo("원문");
     }
@@ -65,7 +65,7 @@ class QuoteContentMappingTest {
     @Test
     @DisplayName("QuoteDetailResponse: summary가 있으면 summary를 반환한다")
     void detail_withSummary_returnsSummary() {
-        QuoteDetailResponse response = QuoteDetailResponse.from(quote("원문", "요약"), List.of(), false, false, true, "NONE");
+        QuoteDetailResponse response = QuoteDetailResponse.from(quote("원문", "요약"), List.of(), false, false, true, "NONE", List.of());
 
         assertThat(response.content()).isEqualTo("요약");
     }

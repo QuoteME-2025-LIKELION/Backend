@@ -10,7 +10,8 @@ public record MyQuoteResponse(
         String authorNickname,
         String birthYear,
         List<String> taggedNicknames,
-        boolean isBookmarked
+        boolean isBookmarked,
+        List<QuoteTagResponse> tags
 ) {
         public static MyQuoteResponse from(Quote quote, String groupName, boolean isBookmarked) {
         String content = (quote.getSummary() != null && !quote.getSummary().isBlank())
@@ -26,7 +27,10 @@ public record MyQuoteResponse(
                 quote.getQuoteTags().stream()
                         .map(qt -> qt.getMember().getNickname())
                         .toList(),
-                isBookmarked
+                isBookmarked,
+                quote.getQuoteTags().stream()
+                        .map(QuoteTagResponse::from)
+                        .toList()
         );
     }
 }

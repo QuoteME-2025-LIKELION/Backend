@@ -3,6 +3,7 @@ package com.ll.demo.domain.group.group.controller;
 import com.ll.demo.domain.group.group.dto.GroupDetailResponse;
 import com.ll.demo.domain.group.group.dto.GroupInviteResponse;
 import com.ll.demo.domain.group.group.dto.GroupJoinRequestResponse;
+import com.ll.demo.domain.group.group.dto.GroupJoinRequestSentResponse;
 import com.ll.demo.domain.group.group.dto.GroupRequest;
 import com.ll.demo.domain.group.group.dto.GroupResponse;
 import com.ll.demo.domain.group.group.dto.MottoRequest;
@@ -88,6 +89,24 @@ public class GroupController {
     ) {
         groupService.requestToJoin(user.getMember(), groupId);
         return ResponseEntity.ok(RsData.of("200", "참여 요청이 발송되었습니다.", null));
+    }
+
+    // 내가 보낸 대기 중인 가입 신청 목록
+    @GetMapping("/join-requests/sent")
+    public ResponseEntity<List<GroupJoinRequestSentResponse>> getMySentJoinRequests(
+            @AuthenticationPrincipal SecurityUser user
+    ) {
+        return ResponseEntity.ok(groupService.getMySentJoinRequests(user.getMember()));
+    }
+
+    // 가입 신청 본인 취소
+    @DeleteMapping("/join-requests/{requestId}")
+    public ResponseEntity<RsData<String>> cancelJoinRequest(
+            @AuthenticationPrincipal SecurityUser user,
+            @PathVariable Long requestId
+    ) {
+        groupService.cancelJoinRequest(user.getMember(), requestId);
+        return ResponseEntity.ok(RsData.of("200", "가입 신청을 취소했습니다.", null));
     }
 
     // 가입 요청 수락

@@ -53,7 +53,7 @@ public class QuoteService {
     private final BookmarkRepository bookmarkRepository;
     //  입력 검증
 
-    /** 검증: 30자 초과 불가, 불량 텍스트 불가 */
+    /** 검증: 30자 초과 불가, 초성만 불가 (이모지·숫자·특수문자는 허용) */
     private void validateQuoteContent(String content) {
         if (content == null || content.isBlank()) {
             throw new GlobalException("400-1", "내용을 입력해주세요.");
@@ -61,15 +61,18 @@ public class QuoteService {
         if (content.codePointCount(0, content.length()) > 30) {
             throw new GlobalException("400-2", "30자를 초과한 글은 게시할 수 없습니다.");
         }
-        if (isLowQualityText(content)) {
-            throw new GlobalException("400-3", "초성이나 특수문자로만 이루어진 글은 게시할 수 없습니다.");
+        if (isOnlyKoreanConsonants(content.replaceAll("\s", ""))) {
+            throw new GlobalException("400-3", "초성으로만 이루어진 글은 게시할 수 없습니다.");
         }
     }
 
-    /** 15자 이하 경고, 불량 텍스트 불가 */
+    /** 일반 문자 필수, 불량 텍스트 불가, 15자 이하 경고 (Gemini 호출·횟수 확인 전에 실행) */
     public void validateDiaryContent(String content) {
         if (content == null || content.isBlank()) {
             throw new GlobalException("400-1", "내용을 입력해주세요.");
+        }
+        if (!hasGeneralLetter(content)) {
+            throw new GlobalException("400-7", "글자가 포함된 내용만 AI 추천을 받을 수 있어요.");
         }
         if (isLowQualityText(content)) {
             throw new GlobalException("400-3", "초성이나 특수문자로만 이루어진 글은 게시할 수 없습니다.");
@@ -89,12 +92,20 @@ public class QuoteService {
         if (noSpace.isBlank()) return true;
 
         // 한국어 자음만
-        boolean onlyKoreanConsonants = noSpace.chars().allMatch(c -> c >= 0x3131 && c <= 0x314E);
-        if (onlyKoreanConsonants) return true;
+        if (isOnlyKoreanConsonants(noSpace)) return true;
 
         // 글자 또는 숫자가 하나도 없으면 특수문자만
         boolean onlySpecialChars = noSpace.chars().noneMatch(Character::isLetterOrDigit);
         return onlySpecialChars;
+    }
+
+    private boolean isOnlyKoreanConsonants(String noSpace) {
+        return !noSpace.isEmpty() && noSpace.chars().allMatch(c -> c >= 0x3131 && c <= 0x314E);
+    }
+
+    /** 유니코드 문자(\p{L})가 하나라도 있으면 true. 한글 자음·모음(ㄱ-ㅎ, ㅏ-ㅣ)은 일반 문자로 보지 않는다 */
+    private boolean hasGeneralLetter(String text) {
+        return text.codePoints().anyMatch(cp -> Character.isLetter(cp) && !(cp >= 0x3131 && cp <= 0x3163));
     }
 
     //  명언 작성

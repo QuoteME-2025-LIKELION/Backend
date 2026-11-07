@@ -6,6 +6,7 @@ import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
 import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
+import com.ll.demo.domain.notification.repository.NotificationRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
 import com.ll.demo.domain.friendship.friendship.type.FriendRequestDirection;
 import com.ll.demo.global.exceptions.GlobalException;
@@ -26,6 +27,7 @@ public class FriendshipService {
     private final FriendshipRepository friendshipRepository;
     private final MemberRepository memberRepository;
     private final NotificationService notificationService;
+    private final NotificationRepository notificationRepository;
 
     // 친구 요청 전송 (단방향 REQUESTED)
     @Transactional
@@ -135,6 +137,28 @@ public class FriendshipService {
                 me.getNickname() + "님이 친구 요청을 거절했습니다.",
                 me.getId()
         );
+    }
+
+    // 보낸 친구 요청 취소 (대기 중인 내 요청만, 상대에게 간 요청 알림도 삭제)
+    @Transactional
+    public void cancelFriendRequest(Member me, Long receiverId) {
+        Member receiver = memberRepository.findById(receiverId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상 회원을 찾을 수 없습니다."));
+
+        Friendship request = friendshipRepository.findByMemberAndFriend(me, receiver).orElse(null);
+        if (request == null) {
+            boolean receivedPending = friendshipRepository.existsByMemberAndFriendAndStatus(receiver, me, FriendshipStatus.REQUESTED);
+            if (receivedPending) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "내가 보낸 요청만 취소할 수 있습니다.");
+            }
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "요청을 찾을 수 없습니다.");
+        }
+        if (request.getStatus() != FriendshipStatus.REQUESTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "처리할 수 없는 요청입니다.");
+        }
+
+        friendshipRepository.delete(request);
+        notificationRepository.deleteSentNotification("FRIEND_REQUEST", me, receiver, me.getId());
     }
 
     private boolean isActive(Friendship friendship) {

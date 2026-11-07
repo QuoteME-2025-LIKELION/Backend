@@ -37,4 +37,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.type IN ('GROUP_INVITE', 'GROUP_JOIN_REQUEST') AND n.targetId = :groupId")
     void deleteAllTargetingGroup(@Param("groupId") Long groupId);
+
+    // 신청 취소 시 상대에게 간 알림 삭제
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.type = :type AND n.sender = :sender AND n.receiver = :receiver AND n.targetId = :targetId")
+    void deleteSentNotification(@Param("type") String type, @Param("sender") Member sender,
+                                @Param("receiver") Member receiver, @Param("targetId") Long targetId);
 }

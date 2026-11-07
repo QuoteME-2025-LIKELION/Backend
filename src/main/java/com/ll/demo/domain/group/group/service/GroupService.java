@@ -16,6 +16,7 @@ import com.ll.demo.domain.group.group.entity.JoinStatus;
 import com.ll.demo.domain.group.group.entity.GroupJoinRequest;
 import com.ll.demo.domain.group.group.dto.GroupDetailResponse;
 import com.ll.demo.domain.group.group.dto.GroupJoinRequestResponse;
+import com.ll.demo.domain.group.group.dto.GroupJoinRequestSentResponse;
 import com.ll.demo.domain.group.group.repository.GroupJoinRequestRepository;
 import com.ll.demo.domain.notification.service.NotificationService;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
@@ -54,6 +55,10 @@ public class GroupService {
 
     // 그룹 생성
     public GroupResponse createGroup(Member leader, GroupRequest req) {
+        if (groupRepository.existsByNormalizedName(req.name())) {
+            throw new GlobalException("409-1", "이미 사용 중인 그룹 이름입니다.");
+        }
+
         Group group = Group.builder()
                 .name(req.name())
                 .motto(req.motto())
@@ -332,6 +337,34 @@ public class GroupService {
                 group.getId()
         );
     }
+    // 내가 보낸 대기 중인 가입 신청 목록
+    @Transactional(readOnly = true)
+    public List<GroupJoinRequestSentResponse> getMySentJoinRequests(Member member) {
+        return groupJoinRequestRepository
+                .findAllByRequesterAndStatusAndTypeOrderByCreateDateDesc(member, JoinStatus.PENDING, InviteType.JOIN_REQUEST)
+                .stream()
+                .map(GroupJoinRequestSentResponse::from)
+                .toList();
+    }
+
+    // 가입 신청 본인 취소 (대기 중인 JOIN_REQUEST만, 그룹장에게 간 신청 알림도 삭제)
+    public void cancelJoinRequest(Member member, Long requestId) {
+        GroupJoinRequest joinReq = groupJoinRequestRepository.findById(requestId)
+                .orElseThrow(() -> new GlobalException("404", "요청을 찾을 수 없습니다."));
+
+        if (joinReq.getRequester() == null || !joinReq.getRequester().getId().equals(member.getId())) {
+            throw new GlobalException("403", "권한이 없습니다.");
+        }
+        if (joinReq.getStatus() != JoinStatus.PENDING || joinReq.getType() != InviteType.JOIN_REQUEST) {
+            throw new GlobalException("400-5", "처리할 수 없는 요청입니다.");
+        }
+
+        Group group = joinReq.getGroup();
+        group.getJoinRequests().remove(joinReq);
+        groupJoinRequestRepository.delete(joinReq);
+        notificationRepository.deleteSentNotification("GROUP_JOIN_REQUEST", joinReq.getRequester(), group.getLeader(), group.getId());
+    }
+
     // 가입 요청 승인
     public void acceptJoinRequest(Member leader, Long requestId) {
         GroupJoinRequest joinReq = groupJoinRequestRepository.findById(requestId)

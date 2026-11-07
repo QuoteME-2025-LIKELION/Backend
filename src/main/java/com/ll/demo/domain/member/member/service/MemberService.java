@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,8 +52,9 @@ import org.springframework.security.oauth2.core.OAuth2Error;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MemberService {
-    private static final int AI_DAILY_LIMIT = 3;
-    private static final String AI_LIMIT_MESSAGE = "AI 추천은 하루 3회까지만 사용할 수 있습니다.";
+    // AI 추천 하루 한도 (custom.ai.daily-limit에서만 관리)
+    @Value("${custom.ai.daily-limit:1}")
+    private int aiDailyLimit;
 
 
     private static final int NICKNAME_MAX_LENGTH = 10;
@@ -218,18 +220,26 @@ public class MemberService {
         }
     }
 
-    // AI 추천 잔여 횟수 확인 (일 3회 제한, 차감은 하지 않음)
+    public int getAiDailyLimit() {
+        return aiDailyLimit;
+    }
+
+    private String aiLimitMessage() {
+        return "AI 추천은 하루 " + aiDailyLimit + "회까지만 사용할 수 있습니다.";
+    }
+
+    // AI 추천 잔여 횟수 확인 (일 한도 제한, 차감은 하지 않음)
     public void checkAiUsageAvailable(Member member) {
-        if (LocalDate.now().equals(member.getAiUsageDate()) && member.getAiUsageCount() >= AI_DAILY_LIMIT) {
-            throw new GlobalException("429-1", AI_LIMIT_MESSAGE);
+        if (LocalDate.now().equals(member.getAiUsageDate()) && member.getAiUsageCount() >= aiDailyLimit) {
+            throw new GlobalException("429-1", aiLimitMessage());
         }
     }
 
     // AI 추천 성공 후 횟수 차감 (날짜 바뀌면 초기화, 동시 요청은 조건부 UPDATE로 한도 보장)
     @Transactional
     public void incrementAiUsage(Long memberId) {
-        if (memberRepository.incrementAiUsage(memberId, LocalDate.now(), AI_DAILY_LIMIT) == 0) {
-            throw new GlobalException("429-1", AI_LIMIT_MESSAGE);
+        if (memberRepository.incrementAiUsage(memberId, LocalDate.now(), aiDailyLimit) == 0) {
+            throw new GlobalException("429-1", aiLimitMessage());
         }
     }
 

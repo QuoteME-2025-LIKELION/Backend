@@ -51,6 +51,7 @@ class ProfileServiceTest {
     @Mock private BookmarkRepository bookmarkRepository;
     @Mock private PokeRepository pokeRepository;
     @Mock private com.ll.demo.domain.member.member.repository.MemberSocialAccountRepository memberSocialAccountRepository;
+    @Mock private com.ll.demo.domain.push.repository.DeviceTokenRepository deviceTokenRepository;
 
     @InjectMocks
     private ProfileService profileService;
@@ -85,7 +86,7 @@ class ProfileServiceTest {
         InOrder inOrder = inOrder(groupRepository, bookmarkRepository, quoteLikeRepository, quoteTagRepository,
                 quoteTagRequestRepository, quoteRepository, friendshipRepository, groupJoinRequestRepository,
                 groupMemberRepository, pokeRepository, notificationRepository, notificationSettingRepository,
-                memberRepository);
+                deviceTokenRepository, memberRepository);
         inOrder.verify(groupRepository).findAllByLeader(member);
         inOrder.verify(bookmarkRepository).deleteAllRelatedToMember(member);
         inOrder.verify(quoteLikeRepository).deleteAllRelatedToMember(member);
@@ -98,6 +99,7 @@ class ProfileServiceTest {
         inOrder.verify(pokeRepository).deleteAllByMember(member);
         inOrder.verify(notificationRepository).deleteAllByMember(member);
         inOrder.verify(notificationSettingRepository).deleteByMember(member);
+        inOrder.verify(deviceTokenRepository).deleteAllByMember(member);
         inOrder.verify(memberRepository).delete(member);
     }
 

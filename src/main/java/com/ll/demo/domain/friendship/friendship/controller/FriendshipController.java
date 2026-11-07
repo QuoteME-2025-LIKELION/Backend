@@ -29,6 +29,16 @@ public class FriendshipController {
         return ResponseEntity.status(HttpStatus.CREATED).body(RsData.of("201-1", "친구 요청을 보냈습니다.", null));
     }
 
+    // 보낸 친구 요청 취소 (대기 중인 요청만)
+    @DeleteMapping("/request/{receiverId}")
+    public ResponseEntity<RsData> cancelFriendRequest(
+            @PathVariable Long receiverId,
+            @AuthenticationPrincipal SecurityUser user
+    ) {
+        friendshipService.cancelFriendRequest(user.getMember(), receiverId);
+        return ResponseEntity.ok(RsData.of("200", "친구 요청을 취소했습니다.", null));
+    }
+
     // 친구 요청 목록 조회 (받은 요청 + 보낸 요청)
     @GetMapping("/requests")
     public ResponseEntity<List<FriendRequestResponse>> getFriendRequests(

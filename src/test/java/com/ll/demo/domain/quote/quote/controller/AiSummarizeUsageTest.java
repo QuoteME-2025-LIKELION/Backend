@@ -26,6 +26,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -121,19 +123,41 @@ class AiSummarizeUsageTest {
     }
 
     @Test
-    @DisplayName("오늘 3회 사용 → 429-1, Gemini 미호출")
+    @DisplayName("오늘 1회 사용 → 429-1, Gemini 미호출")
     void limitReached_notCalled() throws Exception {
-        setUsage(3, LocalDate.now());
+        setUsage(1, LocalDate.now());
 
-        summarize().andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.resultCode").value("429"));
+        summarize().andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.resultCode").value("429"))
+                .andExpect(jsonPath("$.message").value("429-1 - AI 추천은 하루 1회까지만 사용할 수 있습니다."));
 
         verify(geminiService, never()).summarizeThree(anyString());
     }
 
     @Test
+    @DisplayName("첫 요청 성공 후 remaining=0, 두 번째 요청은 429-1이고 Gemini 추가 호출 없음")
+    void secondRequest_blocked() throws Exception {
+        given(geminiService.summarizeThree(anyString())).willReturn(List.of("명언 하나"));
+
+        summarize().andExpect(status().isOk());
+        reload(); // 요청마다 새 트랜잭션인 운영과 같게, 조건부 UPDATE 결과를 다시 읽는다
+        mvc.perform(get("/api/quotes/ai-usage")
+                        .header("Authorization", "Bearer " + authTokenService.genToken(member, 600)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.used").value(1))
+                .andExpect(jsonPath("$.remaining").value(0))
+                .andExpect(jsonPath("$.limit").value(1));
+
+        summarize().andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.resultCode").value("429"));
+
+        verify(geminiService, times(1)).summarizeThree(anyString());
+        assertThat(reload().getAiUsageCount()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("날짜가 바뀌면 초기화 후 1부터")
     void newDay_resets() throws Exception {
-        setUsage(3, LocalDate.now().minusDays(1));
+        setUsage(1, LocalDate.now().minusDays(1));
         given(geminiService.summarizeThree(anyString())).willReturn(List.of("명언 하나"));
 
         summarize().andExpect(status().isOk());
@@ -146,11 +170,11 @@ class AiSummarizeUsageTest {
     @Test
     @DisplayName("조건부 UPDATE는 한도를 넘겨 증가시키지 않음")
     void incrementIsConditional() {
-        setUsage(3, LocalDate.now());
+        setUsage(1, LocalDate.now());
 
-        int updated = memberRepository.incrementAiUsage(member.getId(), LocalDate.now(), 3);
+        int updated = memberRepository.incrementAiUsage(member.getId(), LocalDate.now(), 1);
 
         assertThat(updated).isZero();
-        assertThat(reload().getAiUsageCount()).isEqualTo(3);
+        assertThat(reload().getAiUsageCount()).isEqualTo(1);
     }
 }

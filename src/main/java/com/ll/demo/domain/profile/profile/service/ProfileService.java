@@ -6,6 +6,7 @@ import com.ll.demo.domain.group.group.repository.GroupJoinRequestRepository;
 import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
 import com.ll.demo.domain.group.group.repository.GroupRepository;
 import com.ll.demo.domain.poke.repository.PokeRepository;
+import com.ll.demo.domain.push.repository.DeviceTokenRepository;
 import com.ll.demo.domain.quote.repository.BookmarkRepository;
 import com.ll.demo.domain.quote.repository.QuoteLikeRepository;
 import com.ll.demo.domain.quote.repository.QuoteTagRepository;
@@ -51,6 +52,7 @@ public class ProfileService {
     private final BookmarkRepository bookmarkRepository;
     private final PokeRepository pokeRepository;
     private final MemberSocialAccountRepository memberSocialAccountRepository;
+    private final DeviceTokenRepository deviceTokenRepository;
     private final S3Service s3Service;
 
     // 프로필 정보 조회
@@ -84,8 +86,6 @@ public class ProfileService {
         if (request != null) {
             if (request.nickname() != null && !request.nickname().isBlank()
                     && !request.nickname().equals(persistentMember.getNickname())) {
-                memberRepository.findByNickname(request.nickname())
-                        .ifPresent(m -> { throw new GlobalException("409", "이미 사용 중인 닉네임입니다."); });
                 persistentMember.setNickname(request.nickname());
             }
             if (request.introduction() != null) {
@@ -154,6 +154,7 @@ public class ProfileService {
         notificationRepository.deleteAllByMember(persistentMember);
         notificationSettingRepository.deleteByMember(persistentMember);
         memberSocialAccountRepository.deleteAllByMember(persistentMember);
+        deviceTokenRepository.deleteAllByMember(persistentMember);
         memberRepository.delete(persistentMember);
     }
 

@@ -26,6 +26,9 @@ public interface GroupJoinRequestRepository extends JpaRepository<GroupJoinReque
     // 내게 온 대기 중인 초대 목록
     List<GroupJoinRequest> findAllByRequesterAndStatusAndType(Member requester, JoinStatus status, InviteType type);
 
+    // 내가 보낸 대기 중인 가입 신청 목록
+    List<GroupJoinRequest> findAllByRequesterAndStatusAndTypeOrderByCreateDateDesc(Member requester, JoinStatus status, InviteType type);
+
     // 그룹의 대기 중인 가입 요청 목록 (리더 확인용)
     List<GroupJoinRequest> findAllByGroupAndStatusAndType(Group group, JoinStatus status, InviteType type);
 

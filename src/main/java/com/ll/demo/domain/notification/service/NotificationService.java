@@ -8,12 +8,14 @@ import com.ll.demo.domain.notification.entity.Notification;
 import com.ll.demo.domain.notification.entity.NotificationSetting;
 import com.ll.demo.domain.notification.repository.NotificationRepository;
 import com.ll.demo.domain.notification.repository.NotificationSettingRepository;
+import com.ll.demo.domain.push.event.NotificationCreatedEvent;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.repository.QuoteRepository;
 import com.ll.demo.global.exceptions.GlobalException;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationSettingRepository notificationSettingRepository;
     private final QuoteRepository quoteRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     // 알림 타입 → 카테고리 매핑
     private static final Map<String, List<String>> CATEGORY_TYPES = Map.of(
@@ -73,6 +76,10 @@ public class NotificationService {
                 .build();
 
         notificationRepository.save(notification);
+
+        // 인앱 알림이 저장된 경우에만 푸시 (꺼진 카테고리는 위에서 걸러짐), 발송은 커밋 후
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                notification.getId(), receiver.getId(), type, message, targetId));
     }
 
     // 알림 목록 조회 (전체 or 카테고리 or 특정 타입)

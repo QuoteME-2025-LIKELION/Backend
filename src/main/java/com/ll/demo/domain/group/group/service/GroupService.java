@@ -54,6 +54,10 @@ public class GroupService {
 
     // 그룹 생성
     public GroupResponse createGroup(Member leader, GroupRequest req) {
+        if (groupRepository.existsByNormalizedName(req.name())) {
+            throw new GlobalException("409-1", "이미 사용 중인 그룹 이름입니다.");
+        }
+
         Group group = Group.builder()
                 .name(req.name())
                 .motto(req.motto())

@@ -84,8 +84,6 @@ public class ProfileService {
         if (request != null) {
             if (request.nickname() != null && !request.nickname().isBlank()
                     && !request.nickname().equals(persistentMember.getNickname())) {
-                memberRepository.findByNickname(request.nickname())
-                        .ifPresent(m -> { throw new GlobalException("409", "이미 사용 중인 닉네임입니다."); });
                 persistentMember.setNickname(request.nickname());
             }
             if (request.introduction() != null) {

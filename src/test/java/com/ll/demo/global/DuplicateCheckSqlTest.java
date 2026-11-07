@@ -35,7 +35,7 @@ class DuplicateCheckSqlTest {
                 .filter(sql -> !sql.isEmpty())
                 .toList();
 
-        assertThat(selects).hasSize(4).allMatch(sql -> sql.startsWith("SELECT"));
+        assertThat(selects).hasSize(5).allMatch(sql -> sql.startsWith("SELECT"));
         selects.forEach(sql -> assertThat(em.createNativeQuery(sql).getResultList()).isEmpty());
     }
 }

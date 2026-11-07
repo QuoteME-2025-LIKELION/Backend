@@ -28,6 +28,12 @@ FROM friendships
 GROUP BY member_id, friend_id
 HAVING COUNT(*) > 1;
 
+-- 그룹명 중복 (앞뒤 공백 제거 + 대소문자 무시). 0건이면 유니크 제약을 추가할 수 있다
+SELECT LOWER(TRIM(name)) AS normalized_name, COUNT(*) AS cnt, MIN(id) AS keep_id
+FROM app_groups
+GROUP BY LOWER(TRIM(name))
+HAVING COUNT(*) > 1;
+
 -- ── 2부. 정리 초안 (검토 후 주석을 풀어 실행) ─────────────────
 
 -- START TRANSACTION;

@@ -8,6 +8,7 @@ import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
 import com.ll.demo.domain.group.group.repository.GroupRepository;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.repository.MemberRepository;
+import com.ll.demo.domain.member.member.service.MemberService;
 import com.ll.demo.domain.notification.service.NotificationService;
 import com.ll.demo.domain.quote.dto.*;
 import com.ll.demo.domain.quote.entity.*;
@@ -42,6 +43,7 @@ public class QuoteService {
     private final QuoteRepository quoteRepository;
     private final QuoteLikeRepository quoteLikeRepository;
     private final MemberRepository memberRepository;
+    private final MemberService memberService;
     private final QuoteTagRequestRepository quoteTagRequestRepository;
     private final QuoteTagRepository quoteTagRepository;
     private final NotificationService notificationService;
@@ -157,8 +159,9 @@ public class QuoteService {
         if (today.equals(member.getAiUsageDate())) {
             used = member.getAiUsageCount();
         }
-        int remaining = Math.max(0, 3 - used);
-        return Map.of("used", used, "remaining", remaining, "limit", 3);
+        int limit = memberService.getAiDailyLimit();
+        int remaining = Math.max(0, limit - used);
+        return Map.of("used", used, "remaining", remaining, "limit", limit);
     }
 
     //  좋아요

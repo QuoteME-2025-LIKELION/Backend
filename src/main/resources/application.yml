@@ -98,3 +98,5 @@ custom:
   jwt:
     secretKey: ${JWT_SECRET_KEY}
     accessTokenExpiration: 3600
+  ai:
+    daily-limit: 1

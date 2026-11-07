@@ -64,7 +64,7 @@ public class QuoteController {
         return ResponseEntity.ok(new QuoteSummarizeResponse(summaries));
     }
 
-    // AI 사용량 조회 (하루 3회 제한)
+    // AI 사용량 조회 (하루 한도 custom.ai.daily-limit)
     // GET /api/quotes/ai-usage
     @GetMapping("/ai-usage")
     public ResponseEntity<Map<String, Object>> getAiUsage(

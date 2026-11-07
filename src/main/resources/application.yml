@@ -111,3 +111,5 @@ custom:
       type: 유형
       important: 중요
       published: 게시
+  firebase:
+    credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}

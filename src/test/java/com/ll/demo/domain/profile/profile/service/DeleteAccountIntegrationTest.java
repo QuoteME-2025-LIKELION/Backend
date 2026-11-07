@@ -13,6 +13,8 @@ import com.ll.demo.domain.member.member.type.MemberProvider;
 import com.ll.demo.domain.notification.entity.Notification;
 import com.ll.demo.domain.notification.entity.NotificationSetting;
 import com.ll.demo.domain.poke.entity.Poke;
+import com.ll.demo.domain.push.entity.DevicePlatform;
+import com.ll.demo.domain.push.entity.DeviceToken;
 import com.ll.demo.domain.quote.entity.Bookmark;
 import com.ll.demo.domain.quote.entity.Quote;
 import com.ll.demo.domain.quote.entity.QuoteLike;
@@ -60,7 +62,8 @@ class DeleteAccountIntegrationTest {
             Map.entry("Poke", "sender"),
             Map.entry("Notification", "receiver"),
             Map.entry("NotificationSetting", "member"),
-            Map.entry("MemberSocialAccount", "member")
+            Map.entry("MemberSocialAccount", "member"),
+            Map.entry("DeviceToken", "member")
     );
     private static final Map<String, String> SECOND_MEMBER_REFERENCES = Map.of(
             "Friendship", "friend",
@@ -168,12 +171,15 @@ class DeleteAccountIntegrationTest {
         persist(NotificationSetting.builder().member(x).build());
         persist(MemberSocialAccount.builder().member(x).provider(MemberProvider.GOOGLE).providerId("x-google").build());
         persist(MemberSocialAccount.builder().member(x).provider(MemberProvider.KAKAO).providerId("x-kakao").build());
+        persist(DeviceToken.builder().member(x).token("x-web-token").platform(DevicePlatform.WEB).build());
+        persist(DeviceToken.builder().member(x).token("x-android-token").platform(DevicePlatform.ANDROID).build());
         em.flush();
         em.clear();
 
         Long xId = x.getId();
         Long sharedId = shared.getId();
         Long soloId = solo.getId();
+        assertThat(count("DeviceToken", "member", xId)).isEqualTo(2);
 
         profileService.deleteAccount(em.find(Member.class, xId));
         em.flush();

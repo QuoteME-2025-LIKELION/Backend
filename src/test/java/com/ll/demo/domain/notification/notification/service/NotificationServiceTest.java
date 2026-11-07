@@ -22,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
@@ -49,6 +50,8 @@ class NotificationServiceTest {
     @Mock private NotificationSettingRepository notificationSettingRepository;
 
     @Mock private QuoteRepository quoteRepository;
+
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private Member receiver;
     private Member sender;

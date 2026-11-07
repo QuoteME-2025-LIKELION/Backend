@@ -6,6 +6,7 @@ import com.ll.demo.domain.group.group.repository.GroupJoinRequestRepository;
 import com.ll.demo.domain.group.group.repository.GroupMemberRepository;
 import com.ll.demo.domain.group.group.repository.GroupRepository;
 import com.ll.demo.domain.poke.repository.PokeRepository;
+import com.ll.demo.domain.push.repository.DeviceTokenRepository;
 import com.ll.demo.domain.quote.repository.BookmarkRepository;
 import com.ll.demo.domain.quote.repository.QuoteLikeRepository;
 import com.ll.demo.domain.quote.repository.QuoteTagRepository;
@@ -51,6 +52,7 @@ public class ProfileService {
     private final BookmarkRepository bookmarkRepository;
     private final PokeRepository pokeRepository;
     private final MemberSocialAccountRepository memberSocialAccountRepository;
+    private final DeviceTokenRepository deviceTokenRepository;
     private final S3Service s3Service;
 
     // 프로필 정보 조회
@@ -152,6 +154,7 @@ public class ProfileService {
         notificationRepository.deleteAllByMember(persistentMember);
         notificationSettingRepository.deleteByMember(persistentMember);
         memberSocialAccountRepository.deleteAllByMember(persistentMember);
+        deviceTokenRepository.deleteAllByMember(persistentMember);
         memberRepository.delete(persistentMember);
     }
 

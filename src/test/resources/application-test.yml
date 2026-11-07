@@ -79,3 +79,6 @@ custom:
     secretKey: test-jwt-secret-key-for-hs512-must-be-at-least-sixty-four-bytes-long-0123456789abcdef
   gemini:
     api-key: test-gemini-api-key
+  notion:
+    sync:
+      enabled: false

@@ -100,3 +100,14 @@ custom:
     accessTokenExpiration: 3600
   ai:
     daily-limit: 1
+  notion:
+    token: ${NOTION_TOKEN:}
+    notice-database-id: ${NOTION_NOTICE_DATABASE_ID:}
+    sync:
+      enabled: ${NOTION_SYNC_ENABLED:false}
+      interval-ms: 600000
+    properties:
+      title: 제목
+      type: 유형
+      important: 중요
+      published: 게시

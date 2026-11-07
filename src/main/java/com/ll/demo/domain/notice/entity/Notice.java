@@ -10,6 +10,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 import static lombok.AccessLevel.PROTECTED;
 
 @Entity
@@ -29,4 +31,18 @@ public class Notice extends BaseTime {
     @Column(nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean important = false;
+
+    // 노션에서 동기화된 공지만 값이 있다 (직접 등록·게스트 시드 공지는 null)
+    @Column(unique = true)
+    private String notionPageId;
+
+    private LocalDateTime notionLastEditedAt;
+
+    public void updateFromNotion(NoticeType type, String title, String content, boolean important, LocalDateTime lastEditedAt) {
+        this.type = type;
+        this.title = title;
+        this.content = content;
+        this.important = important;
+        this.notionLastEditedAt = lastEditedAt;
+    }
 }

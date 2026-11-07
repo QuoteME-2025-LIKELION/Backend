@@ -10,6 +10,9 @@ services:
       - .env
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      NOTION_TOKEN: ${NOTION_TOKEN:-}
+      NOTION_NOTICE_DATABASE_ID: ${NOTION_NOTICE_DATABASE_ID:-}
+      NOTION_SYNC_ENABLED: ${NOTION_SYNC_ENABLED:-false}
     logging:
       driver: "json-file"
       options:

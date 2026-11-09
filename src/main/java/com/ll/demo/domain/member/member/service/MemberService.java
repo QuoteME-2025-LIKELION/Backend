@@ -110,9 +110,12 @@ public class MemberService {
         return memberRepository.findById(id).orElseThrow(() -> new GlobalException("400-2", "회원이 존재하지 않습니다."));
     }
 
-    // RefreshToken 메서드
+    // RefreshToken 메서드 (typ=access 토큰은 DB와 일치해도 refresh로 받지 않음)
     @Transactional
     public java.util.Optional<Member> findByRefreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank() || !authTokenService.isRefreshTokenType(refreshToken)) {
+            return Optional.empty();
+        }
         return memberRepository.findByRefreshToken(refreshToken);
     }
 
@@ -198,7 +201,7 @@ public class MemberService {
     // 리프레시 토큰 생성 저장
     @Transactional
     public String genRefreshToken(Member member) {
-        String refreshToken = authTokenService.genToken(member, 60 * 60 * 24 * 30); // 30일
+        String refreshToken = authTokenService.genRefreshToken(member, 60 * 60 * 24 * 30); // 30일
         member.setRefreshToken(refreshToken);
         // 강제로 DB반영
         memberRepository.saveAndFlush(member);

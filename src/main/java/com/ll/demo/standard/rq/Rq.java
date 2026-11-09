@@ -32,7 +32,7 @@ public class Rq {
         memberResolved = true;
 
         String accessToken = getCookieValue("accessToken", null);
-        if (accessToken == null || !authTokenService.validateToken(accessToken)) {
+        if (accessToken == null || !authTokenService.validateAccessToken(accessToken)) {
             return null;
         }
 

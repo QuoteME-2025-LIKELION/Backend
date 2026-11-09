@@ -70,7 +70,7 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (!authTokenService.validateToken(accessToken)) {
+        if (!authTokenService.validateAccessToken(accessToken)) {
             if (Ut.str.isNotBlank(refreshToken)) {
                 Member member = memberService.findByRefreshToken(refreshToken).orElse(null);
 
@@ -88,7 +88,7 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        if (Ut.str.isNotBlank(accessToken) && authTokenService.validateToken(accessToken)) {
+        if (Ut.str.isNotBlank(accessToken) && authTokenService.validateAccessToken(accessToken)) {
             Map<String, Object> accessTokenData = authTokenService.getDataFrom(accessToken);
             long id = Long.parseLong(accessTokenData.get("id").toString());
 

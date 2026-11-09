@@ -43,7 +43,7 @@ class LegacyEndpointRemovalTest {
     @DisplayName("폼 로그인은 비활성화되어 POST /login 이 처리되지 않는다")
     void formLogin_disabled() throws Exception {
         mvc.perform(post("/login").param("username", "me@test.com").param("password", "password123"))
-                .andExpect(status().isForbidden())
+                .andExpect(status().isUnauthorized())
                 .andExpect(header().doesNotExist("Location"));
     }
 }

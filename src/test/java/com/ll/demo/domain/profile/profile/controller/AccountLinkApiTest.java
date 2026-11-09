@@ -64,8 +64,8 @@ class AccountLinkApiTest {
     @DisplayName("미인증 → 기존 미인증 응답")
     void start_unauthenticated() throws Exception {
         mvc.perform(get("/api/profile/account/link/google"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.resultCode").value("403-1"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.resultCode").value("401-4"));
     }
 
     @ParameterizedTest

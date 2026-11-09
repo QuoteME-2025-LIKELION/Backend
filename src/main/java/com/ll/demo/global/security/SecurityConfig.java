@@ -61,13 +61,15 @@ public class SecurityConfig {
                         .sessionFixation(sessionFixation -> sessionFixation.none())
                 )
                 .exceptionHandling(exceptionHandling -> exceptionHandling
+                        // 인증 없음·만료는 401 (권한 거절 403과 구분)
                         .authenticationEntryPoint((request, response, authException) -> {
+                            boolean tokenRejected = request.getAttribute(CustomAuthenticationFilter.AUTH_REJECTED_ATTRIBUTE) != null;
                             response.setContentType("application/json;charset=UTF-8");
-                            response.setStatus(403);
+                            response.setStatus(401);
                             response.getWriter().write(
-                                    Ut.json.toString(
-                                            RsData.of("403-1", request.getRequestURI() + ", " + authException.getLocalizedMessage(), null)
-                                    )
+                                    Ut.json.toString(tokenRejected
+                                            ? RsData.of("401-5", "인증이 만료되었습니다.", null)
+                                            : RsData.of("401-4", "로그인이 필요합니다.", null))
                             );
                         })
                 )

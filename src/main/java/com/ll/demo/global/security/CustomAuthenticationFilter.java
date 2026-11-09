@@ -25,6 +25,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class CustomAuthenticationFilter extends OncePerRequestFilter {
+    // 토큰을 보냈지만 인증되지 않은 요청 표시 (엔트리포인트가 401-4와 401-5를 구분)
+    public static final String AUTH_REJECTED_ATTRIBUTE = "AUTH_TOKEN_REJECTED";
+
     private final MemberService memberService;
     private final AuthTokenService authTokenService;
     private final Rq rq;
@@ -95,8 +98,9 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
             // 1. DB에서 실제 회원 조회 (SecurityUser에는 Member 객체가 통째로 필요함)
             Member member = memberService.findById(id).orElse(null);
 
-            // 탈퇴 회원의 토큰이면 인증 없이 통과시켜 미인증(403-1)으로 응답
+            // 탈퇴 회원의 토큰이면 인증 없이 통과시켜 미인증(401-5)으로 응답
             if (member == null) {
+                req.setAttribute(AUTH_REJECTED_ATTRIBUTE, true);
                 filterChain.doFilter(req, response);
                 return;
             }
@@ -118,6 +122,9 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
+        } else {
+            // 무효·만료·typ 불일치, 재발급 실패
+            req.setAttribute(AUTH_REJECTED_ATTRIBUTE, true);
         }
 
         filterChain.doFilter(req, response);

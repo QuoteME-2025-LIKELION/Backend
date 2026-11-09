@@ -73,8 +73,8 @@ class TokenTypeTest {
         String refreshToken = memberService.genRefreshToken(member);
 
         mvc.perform(get("/api/profile").header("Authorization", "Bearer " + refreshToken))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.resultCode").value("403-1"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.resultCode").value("401-5"));
     }
 
     @Test
@@ -97,7 +97,7 @@ class TokenTypeTest {
                 .andExpect(status().isOk());
 
         mvc.perform(get("/api/profile").header("Authorization", "Bearer " + refreshToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -116,7 +116,7 @@ class TokenTypeTest {
     @DisplayName("typ 없는 구 토큰은 Bearer access로 받지 않는다")
     void legacyTokenAsBearer_isUnauthenticated() throws Exception {
         mvc.perform(get("/api/profile").header("Authorization", "Bearer " + legacyToken(600)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -81,14 +81,14 @@ class MemberProfileAccessTest {
     }
 
     @Test
-    @DisplayName("탈퇴 회원의 유효한 토큰 → 500이 아닌 미인증 403-1")
-    void deletedMemberToken_403() throws Exception {
+    @DisplayName("탈퇴 회원의 유효한 토큰 → 500이 아닌 미인증 401-5")
+    void deletedMemberToken_401() throws Exception {
         String token = bearer(other);
         memberRepository.delete(other);
         memberRepository.flush();
 
         mvc.perform(get("/api/profile/account").header("Authorization", token))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.resultCode").value("403-1"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.resultCode").value("401-5"));
     }
 }

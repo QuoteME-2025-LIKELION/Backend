@@ -1,6 +1,8 @@
 package com.ll.demo.domain.quote.dto;
 
 import com.ll.demo.domain.quote.entity.Quote;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,7 +20,9 @@ public record QuoteDetailResponse(
         boolean isBookmarked,
         boolean isFriendQuote,
         String myTagStatus,
-        List<QuoteTagResponse> tags
+        List<QuoteTagResponse> tags,
+        @Schema(description = "summary(AI 추천 명언)가 null·빈 문자열·공백이 아니면 true")
+        @JsonProperty("isAiGenerated") boolean isAiGenerated
 ) { public static QuoteDetailResponse from(
             Quote quote,
             List<String> taggedNicknames,
@@ -48,7 +52,8 @@ public record QuoteDetailResponse(
                 isBookmarked,
                 isFriend,
                 myTagStatus,
-                tags
+                tags,
+                quote.getSummary() != null && !quote.getSummary().isBlank()
         );
     }
 

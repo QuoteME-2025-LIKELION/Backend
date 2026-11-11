@@ -12,6 +12,9 @@ import com.ll.demo.global.security.SecurityUser;
 import com.ll.demo.global.security.oauth2.AppOAuth2Service;
 import com.ll.demo.global.security.oauth2.OAuth2MemberService;
 import com.ll.demo.standard.rq.Rq;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +61,10 @@ public class ProfileController {
     }
 
     // 첫 프로필 설정 (닉네임·출생년도 필수). 저장에 성공해야 profileCompleted=true
+    @Tag(name = "앱 인증")
+    @Operation(summary = "첫 프로필 설정", description = "nickname·birthYear 필수, introduction 선택. 저장 성공 시 profileCompleted=true. 다시 호출하면 값 갱신")
+    @ApiResponse(responseCode = "400", description = "필수 항목 누락·형식 오류")
+    @ApiResponse(responseCode = "403", description = "게스트")
     @PutMapping("/setup")
     public ResponseEntity<ProfileResponse> setupProfile(
             @AuthenticationPrincipal SecurityUser securityUser,

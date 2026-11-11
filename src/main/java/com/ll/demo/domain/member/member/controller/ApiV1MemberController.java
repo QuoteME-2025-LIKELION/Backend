@@ -12,6 +12,12 @@ import com.ll.demo.global.security.AuthTokenService;
 import com.ll.demo.global.security.SecurityUser;
 import com.ll.demo.global.security.oauth2.AppOAuth2Service;
 import com.ll.demo.standard.rq.Rq;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -58,6 +64,11 @@ public class ApiV1MemberController {
     }
 
     // 회원가입
+    @Tag(name = "앱 인증")
+    @Operation(summary = "이메일 회원가입", description = "앱 요청이면 응답에 refreshToken을 추가하고 쿠키를 설정하지 않음. 새 회원은 profileCompleted=false")
+    @Parameter(name = "X-Client-Type", in = ParameterIn.HEADER, required = false,
+            description = "app이면 refreshToken을 본문으로 주고받고 쿠키를 쓰지 않음. 없으면 웹(쿠키)",
+            schema = @Schema(type = "string", allowableValues = {"app"}))
     @PostMapping("/signup")
     public RsData<MemberJoinRespBody> signup(@Valid @RequestBody MemberJoinReqBody body, HttpServletResponse response) {
         RsData<Member> joinRs = memberService.join(
@@ -95,6 +106,13 @@ public class ApiV1MemberController {
         }
     }
 
+    @Tag(name = "앱 인증")
+    @Operation(summary = "이메일 로그인", description = "앱 요청이면 응답에 refreshToken을 추가하고 쿠키를 설정하지 않음. 새 로그인은 이전 refresh 토큰을 무효화")
+    @Parameter(name = "X-Client-Type", in = ParameterIn.HEADER, required = false,
+            description = "app이면 refreshToken을 본문으로 주고받고 쿠키를 쓰지 않음. 없으면 웹(쿠키)",
+            schema = @Schema(type = "string", allowableValues = {"app"}))
+    @ApiResponse(responseCode = "401", description = "message 401-1: 이메일 또는 비밀번호 불일치")
+    @ApiResponse(responseCode = "404", description = "message 404-1: 존재하지 않는 계정")
     @PostMapping("/login")
     public RsData<LoginResponseBody> login(@Valid @RequestBody MemberLoginReqBody body, HttpServletResponse response) {
         Member member = memberService.findByEmail(body.getEmail())
@@ -123,6 +141,11 @@ public class ApiV1MemberController {
         return rq.getCookieValue("refreshToken", "");
     }
 
+    @Tag(name = "앱 인증")
+    @Operation(summary = "로그아웃", description = "Bearer 사용자 또는 본문·쿠키의 refreshToken과 일치하는 회원의 refresh 토큰을 무효화. access 토큰이 만료돼도 동작")
+    @Parameter(name = "X-Client-Type", in = ParameterIn.HEADER, required = false,
+            description = "app이면 refreshToken을 본문으로 주고받고 쿠키를 쓰지 않음. 없으면 웹(쿠키)",
+            schema = @Schema(type = "string", allowableValues = {"app"}))
     @PostMapping("/logout")
     public RsData<Void> logout(
             @RequestBody(required = false) RefreshTokenReqBody body,
@@ -145,6 +168,11 @@ public class ApiV1MemberController {
 
     // ApiV1MemberController.java 내 guestLogin 메서드 보완
 
+    @Tag(name = "앱 인증")
+    @Operation(summary = "게스트 로그인", description = "앱 요청이면 응답에 refreshToken을 추가하고 쿠키를 설정하지 않음")
+    @Parameter(name = "X-Client-Type", in = ParameterIn.HEADER, required = false,
+            description = "app이면 refreshToken을 본문으로 주고받고 쿠키를 쓰지 않음. 없으면 웹(쿠키)",
+            schema = @Schema(type = "string", allowableValues = {"app"}))
     @PostMapping("/guest-login")
     public RsData<LoginResponseBody> guestLogin(HttpServletResponse response) {
         // MemberService에서 더미 데이터가 포함된 계정 생성or가져오기
@@ -165,6 +193,12 @@ public class ApiV1MemberController {
     }
 
     // 토큰 재발급
+    @Tag(name = "앱 인증")
+    @Operation(summary = "access 토큰 재발급", description = "본문 refreshToken 우선, 없으면 쿠키. refresh 토큰은 회전하지 않음. 앱 요청이면 쿠키를 설정하지 않음")
+    @Parameter(name = "X-Client-Type", in = ParameterIn.HEADER, required = false,
+            description = "app이면 refreshToken을 본문으로 주고받고 쿠키를 쓰지 않음. 없으면 웹(쿠키)",
+            schema = @Schema(type = "string", allowableValues = {"app"}))
+    @ApiResponse(responseCode = "401", description = "message 401-2: refresh 토큰 없음 / 401-3: 무효한 refresh 토큰")
     @PostMapping("/refresh")
     public RsData<LoginResponseBody> refresh(
             @RequestBody(required = false) RefreshTokenReqBody body,
@@ -189,6 +223,9 @@ public class ApiV1MemberController {
     }
 
     // 앱 소셜 로그인: 일회용 교환 코드 + PKCE verifier로 토큰 발급 (쿠키 없음)
+    @Tag(name = "앱 인증")
+    @Operation(summary = "앱 소셜 로그인 교환", description = "시스템 브라우저 복귀 시 받은 code(60초, 1회용)와 PKCE codeVerifier로 토큰 발급. 쿠키 없음. 흐름은 상단 가이드 1절")
+    @ApiResponse(responseCode = "400", description = "message 400-30: 코드 없음·만료·재사용·verifier 불일치 (사유 구분 없음)")
     @PostMapping("/oauth2/token")
     public RsData<OAuth2TokenRespBody> exchangeOAuth2Code(@RequestBody(required = false) OAuth2TokenReqBody body) {
         AppOAuth2Service.LoginExchangeResult result = appOAuth2Service.exchangeLoginCode(

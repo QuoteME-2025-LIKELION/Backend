@@ -10,6 +10,7 @@ import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.rsData.RsData;
 import com.ll.demo.global.security.AuthTokenService;
 import com.ll.demo.global.security.SecurityUser;
+import com.ll.demo.global.security.oauth2.AppOAuth2Service;
 import com.ll.demo.standard.rq.Rq;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -37,6 +38,7 @@ public class ApiV1MemberController {
     private final Rq rq;
     private final AuthTokenService authTokenService;
     private final MemberRepository memberRepository;
+    private final AppOAuth2Service appOAuth2Service;
 
     private static final int REFRESH_TOKEN_COOKIE_SEC = 60 * 60 * 24 * 30;
 
@@ -184,6 +186,17 @@ public class ApiV1MemberController {
         }
 
         return RsData.of("200-3", new LoginResponseBody(MemberDto.of(member), newAccessToken));
+    }
+
+    // 앱 소셜 로그인: 일회용 교환 코드 + PKCE verifier로 토큰 발급 (쿠키 없음)
+    @PostMapping("/oauth2/token")
+    public RsData<OAuth2TokenRespBody> exchangeOAuth2Code(@RequestBody(required = false) OAuth2TokenReqBody body) {
+        AppOAuth2Service.LoginExchangeResult result = appOAuth2Service.exchangeLoginCode(
+                body != null ? body.code() : null,
+                body != null ? body.codeVerifier() : null);
+        Member member = result.member();
+        return RsData.of("200-4", new OAuth2TokenRespBody(
+                result.accessToken(), result.refreshToken(), result.newUser(), member.isProfileCompleted(), MemberDto.of(member)));
     }
 
     // 다른 회원 프로필

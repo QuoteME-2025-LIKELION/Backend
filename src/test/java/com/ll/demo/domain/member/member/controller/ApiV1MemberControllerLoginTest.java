@@ -6,6 +6,7 @@ import com.ll.demo.domain.member.member.repository.MemberRepository;
 import com.ll.demo.domain.member.member.service.MemberService;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.security.AuthTokenService;
+import com.ll.demo.global.security.oauth2.AppOAuth2Service;
 import com.ll.demo.standard.rq.Rq;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,13 +36,14 @@ class ApiV1MemberControllerLoginTest {
     @Mock private Rq rq;
     @Mock private AuthTokenService authTokenService;
     @Mock private MemberRepository memberRepository;
+    @Mock private AppOAuth2Service appOAuth2Service;
 
     private ApiV1MemberController controller;
     private final MockHttpServletResponse response = new MockHttpServletResponse();
 
     @BeforeEach
     void setUp() {
-        controller = new ApiV1MemberController(memberService, rq, authTokenService, memberRepository);
+        controller = new ApiV1MemberController(memberService, rq, authTokenService, memberRepository, appOAuth2Service);
     }
 
     @AfterEach

@@ -45,6 +45,7 @@ class OAuth2SuccessHandlerTest {
     @Autowired private AuthTokenService authTokenService;
     @Autowired private MemberService memberService;
     @Autowired private MemberRepository memberRepository;
+    @Autowired private AppOAuth2Service appOAuth2Service;
 
     private final Rq rq = mock(Rq.class);
     private OAuth2SuccessHandler handler;
@@ -52,7 +53,7 @@ class OAuth2SuccessHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new OAuth2SuccessHandler(authTokenService, memberService, rq);
+        handler = new OAuth2SuccessHandler(authTokenService, memberService, rq, appOAuth2Service);
         ReflectionTestUtils.setField(handler, "redirectUri", REDIRECT_URI);
         member = memberRepository.save(Member.builder().email("social@test.com").nickname("소셜").password("password123").build());
     }

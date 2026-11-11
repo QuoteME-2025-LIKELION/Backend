@@ -62,6 +62,7 @@ logging:
 custom:
   oauth2:
     redirect-base: http://localhost:8080
+    app-redirect-uris: quoteme://oauth2/callback,quoteme://oauth2/link
   site:
     name: "QUOTEME TEST"
     cookieDomain: localhost

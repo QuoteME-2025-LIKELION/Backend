@@ -98,6 +98,7 @@ public class MemberService {
                 .password(passwordEncoder.encode(password))
                 .nickname(nickname)
                 .birthYear(birthYear)
+                .profileCompleted(false)
                 .build();
 
         memberRepository.save(member);
@@ -305,6 +306,7 @@ public class MemberService {
                 .profileImage(profileImage)
                 .provider(provider)
                 .providerId(providerId)
+                .profileCompleted(false)
                 .build();
         Member saved = memberRepository.save(newMember);
         ensureSocialAccount(saved, provider, providerId);

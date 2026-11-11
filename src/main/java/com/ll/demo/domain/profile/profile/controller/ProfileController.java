@@ -3,6 +3,7 @@ package com.ll.demo.domain.profile.profile.controller;
 import com.ll.demo.domain.profile.profile.dto.AccountInfoResponse;
 import com.ll.demo.domain.profile.profile.dto.AccountUpdateRequest;
 import com.ll.demo.domain.profile.profile.dto.ProfileResponse;
+import com.ll.demo.domain.profile.profile.dto.ProfileSetupRequest;
 import com.ll.demo.domain.profile.profile.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.profile.profile.service.ProfileService;
 import com.ll.demo.global.aws.S3Service;
@@ -53,6 +54,15 @@ public class ProfileController {
         profileService.validateNotGuest(securityUser.getMember());
         String imageUrl = (image != null && !image.isEmpty()) ? s3Service.uploadFile(image) : null;
         return ResponseEntity.ok(profileService.updateProfile(securityUser.getMember(), request, imageUrl));
+    }
+
+    // 첫 프로필 설정 (닉네임·출생년도 필수). 저장에 성공해야 profileCompleted=true
+    @PutMapping("/setup")
+    public ResponseEntity<ProfileResponse> setupProfile(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @Valid @RequestBody ProfileSetupRequest request
+    ) {
+        return ResponseEntity.ok(profileService.setupProfile(securityUser.getMember(), request));
     }
 
     // 계정 정보 조회 (성별, 생년월일, 소셜 연동 상태)

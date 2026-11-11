@@ -9,6 +9,7 @@ import com.ll.demo.domain.profile.profile.service.ProfileService;
 import com.ll.demo.global.aws.S3Service;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.security.SecurityUser;
+import com.ll.demo.global.security.oauth2.AppOAuth2Service;
 import com.ll.demo.global.security.oauth2.OAuth2MemberService;
 import com.ll.demo.standard.rq.Rq;
 import jakarta.servlet.http.HttpServletRequest;
@@ -96,6 +97,8 @@ public class ProfileController {
         profileService.validateNotGuest(securityUser.getMember());
 
         request.getSession().setAttribute(OAuth2MemberService.LINK_SESSION_ATTRIBUTE, securityUser.getMember().getId());
+        // 웹 연동: 중단된 앱 연동 속성이 남아 있어도 앱으로 복귀하지 않게 함
+        AppOAuth2Service.clearAppSession(request.getSession());
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create("/oauth2/authorization/" + provider))
                 .build();

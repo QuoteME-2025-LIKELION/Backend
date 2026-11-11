@@ -316,6 +316,13 @@ public class MemberService {
     // 계정 연동: 이미 같은 회원에게 연결되어 있으면 아무것도 하지 않음
     @Transactional
     public Member linkSocialAccount(Long memberId, MemberProvider provider, String providerId) {
+        Member member = validateSocialLink(memberId, provider, providerId);
+        ensureSocialAccount(member, provider, providerId);
+        return member;
+    }
+
+    // 연동 제한 검사만 하고 저장하지 않음 (앱 연동은 확정 API에서 저장)
+    public Member validateSocialLink(Long memberId, MemberProvider provider, String providerId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new OAuth2AuthenticationException(
                         new OAuth2Error(SOCIAL_ACCOUNT_NOT_FOUND), "존재하지 않는 계정입니다."));
@@ -341,8 +348,6 @@ public class MemberService {
             throw new OAuth2AuthenticationException(
                     new OAuth2Error(SOCIAL_PROVIDER_ALREADY_LINKED), "같은 소셜 서비스의 다른 계정이 이미 연결되어 있습니다.");
         }
-
-        ensureSocialAccount(member, provider, providerId);
         return member;
     }
 

@@ -3,12 +3,14 @@ package com.ll.demo.global.security.oauth2;
 import com.ll.demo.AppConfig;
 import com.ll.demo.domain.member.member.entity.Member;
 import com.ll.demo.domain.member.member.service.MemberService;
+import com.ll.demo.domain.member.member.type.MemberProvider;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.security.AuthTokenService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 // 앱(RN) 소셜 인증: 시스템 브라우저 + 일회용 코드 + PKCE(S256)
@@ -41,7 +44,13 @@ public class AppOAuth2Service {
     public static final String INVALID_APP_REQUEST = "400-31";
     public static final String INVALID_APP_REQUEST_MESSAGE = "허용되지 않은 앱 인증 요청입니다.";
 
+    public static final String INVALID_LINK_TICKET = "400-32";
+    public static final String INVALID_LINK_TICKET_MESSAGE = "유효하지 않은 연동 요청입니다.";
+    public static final String LINK_CONFLICT = "409-2";
+
     public static final int LOGIN_CODE_TTL_SEC = 60;
+    public static final int LINK_TICKET_TTL_SEC = 60 * 5;
+    public static final int LINK_RESULT_TTL_SEC = 60;
 
     private static final String CHALLENGE_METHOD_S256 = "S256";
     private static final Pattern CODE_CHALLENGE = Pattern.compile("^[A-Za-z0-9_-]{43,128}$");
@@ -140,6 +149,58 @@ public class AppOAuth2Service {
         return new LoginExchangeResult(member, exchangeCode.isNewUser(), accessToken, refreshToken);
     }
 
+    // 앱 연동 시작: 브라우저로 넘길 1회용 연동 티켓 (5분)
+    @Transactional
+    public String issueLinkTicket(Long memberId, String provider, String redirectUri, String codeChallenge) {
+        return issue(OAuth2ExchangeCode.builder()
+                .memberId(memberId)
+                .codeChallenge(codeChallenge)
+                .purpose(OAuth2ExchangeCode.Purpose.LINK_TICKET)
+                .redirectUri(redirectUri)
+                .provider(provider), LINK_TICKET_TTL_SEC);
+    }
+
+    // 브라우저 진입: 티켓을 원자적으로 사용 처리 (provider가 다르면 무효)
+    @Transactional
+    public OAuth2ExchangeCode consumeLinkTicket(String ticket, String provider) {
+        if (ticket == null || ticket.isBlank()) {
+            throw invalidLinkTicket();
+        }
+        String ticketHash = sha256Hex(ticket);
+        OAuth2ExchangeCode linkTicket = exchangeCodeRepository.findByCodeHashAndPurpose(ticketHash, OAuth2ExchangeCode.Purpose.LINK_TICKET)
+                .orElseThrow(AppOAuth2Service::invalidLinkTicket);
+        if (provider != null && !provider.equals(linkTicket.getProvider())) {
+            throw invalidLinkTicket();
+        }
+        if (exchangeCodeRepository.markUsed(ticketHash, OAuth2ExchangeCode.Purpose.LINK_TICKET, LocalDateTime.now()) != 1) {
+            throw invalidLinkTicket();
+        }
+        return linkTicket;
+    }
+
+    // 소셜 인증 성공: 아직 연결하지 않고 확정용 코드만 발급 (60초)
+    @Transactional
+    public String issueLinkResult(Long memberId, String provider, String providerId, String codeChallenge) {
+        return issue(OAuth2ExchangeCode.builder()
+                .memberId(memberId)
+                .codeChallenge(codeChallenge)
+                .purpose(OAuth2ExchangeCode.Purpose.LINK_RESULT)
+                .provider(provider)
+                .providerId(providerId), LINK_RESULT_TTL_SEC);
+    }
+
+    // 확정: PKCE·현재 회원 일치·1회용을 확인한 뒤 연결 (중복 제한은 저장 시점에 다시 검사)
+    @Transactional
+    public Member confirmLink(Long memberId, String code, String codeVerifier) {
+        OAuth2ExchangeCode linkResult = consume(OAuth2ExchangeCode.Purpose.LINK_RESULT, code, codeVerifier, memberId);
+        MemberProvider provider = MemberProvider.valueOf(linkResult.getProvider().toUpperCase(Locale.ROOT));
+        try {
+            return memberService.linkSocialAccount(memberId, provider, linkResult.getProviderId());
+        } catch (OAuth2AuthenticationException e) {
+            throw new GlobalException(LINK_CONFLICT, e.getMessage());
+        }
+    }
+
     // 만료되거나 사용된 코드 정리 (하루 1회)
     @Scheduled(cron = "0 30 4 * * *")
     @Transactional
@@ -177,6 +238,10 @@ public class AppOAuth2Service {
             throw invalidCode();
         }
         return exchangeCode;
+    }
+
+    private static GlobalException invalidLinkTicket() {
+        return new GlobalException(INVALID_LINK_TICKET, INVALID_LINK_TICKET_MESSAGE);
     }
 
     private static GlobalException invalidCode() {

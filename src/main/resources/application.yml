@@ -78,6 +78,8 @@ logging:
 custom:
   oauth2:
     redirect-base: ${CUSTOM_OAUTH2_REDIRECT_BASE:http://localhost:8080}
+    # 앱(RN) 소셜 로그인 복귀 URI 허용 목록 (쉼표 구분, 정확히 일치). 비어 있으면 앱 로그인 요청은 모두 400
+    app-redirect-uris: ${APP_OAUTH2_REDIRECT_URIS:}
   dev:
     cookieDomain: "3.38.96.140"
     frontUrl: "http://localhost:5173"

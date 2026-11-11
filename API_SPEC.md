@@ -348,3 +348,14 @@ Base Path: `/api/push/tokens`
 - 소셜 로그인 성공: 두 쿠키를 설정하고 `redirect-uri?accessToken=...`로 이동한다. refreshToken은 URL에 없고, 신규 가입이면 `&isNewUser=true`가 붙는다
 - 소셜 로그인 실패: `failure-uri`로 이동하며 원인을 아는 경우 `reason`이 붙는다 (`account_not_found`, `email_not_verified`, 연동 시 `already_linked`, `provider_already_linked`)
 - 쿠키 인증의 변경 요청은 허용 목록에 없는 `Origin`이면 403 (`Origin: null` 포함). `Origin`이 없는 요청은 통과
+
+## 앱(RN) 인증
+
+상세 정책·흐름·오류 코드는 **Swagger 상단 가이드**(`/swagger-ui.html`, 원문 `src/main/resources/openapi/app-guide.md`)를 따른다. 여기에는 경로만 둔다.
+
+- 앱 요청 헤더: `X-Client-Type: app` (refreshToken을 본문으로 주고받고 쿠키를 쓰지 않음)
+- 앱 소셜 로그인 시작: `GET /oauth2/authorization/{google|kakao}?mode=...&client=app&redirect_uri=...&code_challenge=...&code_challenge_method=S256` (시스템 인증 브라우저)
+- 교환: `POST /api/auth/oauth2/token` `{ code, codeVerifier }`
+- 앱 계정 연동: `POST /api/profile/account/link/{provider}/start` → `authorizationUrl` → `POST /api/profile/account/link/confirm` `{ code, codeVerifier }`
+- 첫 프로필 설정: `PUT /api/profile/setup` `{ nickname, birthYear, introduction? }` (성공 시 `profileCompleted=true`)
+- 인증 실패: 토큰 없음 `401`(`401-4`), 무효·만료 `401`(`401-5`), 권한 거절 `403`

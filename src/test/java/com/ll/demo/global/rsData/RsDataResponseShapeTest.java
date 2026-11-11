@@ -90,11 +90,11 @@ class RsDataResponseShapeTest {
     }
 
     @Test
-    @DisplayName("미인증 응답: 상태 403, resultCode 403-1, 문구는 message")
+    @DisplayName("미인증 응답: 상태 401, resultCode 401-4, 문구는 message")
     void unauthenticated() throws Exception {
         mvc.perform(get("/api/profile"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.resultCode").value("403-1"))
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.startsWith("/api/profile")));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.resultCode").value("401-4"))
+                .andExpect(jsonPath("$.message").value("로그인이 필요합니다."));
     }
 }

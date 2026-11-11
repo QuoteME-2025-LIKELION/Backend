@@ -3,13 +3,18 @@ package com.ll.demo.domain.profile.profile.controller;
 import com.ll.demo.domain.profile.profile.dto.AccountInfoResponse;
 import com.ll.demo.domain.profile.profile.dto.AccountUpdateRequest;
 import com.ll.demo.domain.profile.profile.dto.ProfileResponse;
+import com.ll.demo.domain.profile.profile.dto.ProfileSetupRequest;
 import com.ll.demo.domain.profile.profile.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.profile.profile.service.ProfileService;
 import com.ll.demo.global.aws.S3Service;
 import com.ll.demo.global.exceptions.GlobalException;
 import com.ll.demo.global.security.SecurityUser;
+import com.ll.demo.global.security.oauth2.AppOAuth2Service;
 import com.ll.demo.global.security.oauth2.OAuth2MemberService;
 import com.ll.demo.standard.rq.Rq;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +60,19 @@ public class ProfileController {
         return ResponseEntity.ok(profileService.updateProfile(securityUser.getMember(), request, imageUrl));
     }
 
+    // 첫 프로필 설정 (닉네임·출생년도 필수). 저장에 성공해야 profileCompleted=true
+    @Tag(name = "앱 인증")
+    @Operation(summary = "첫 프로필 설정", description = "nickname·birthYear 필수, introduction 선택. 저장 성공 시 profileCompleted=true. 다시 호출하면 값 갱신")
+    @ApiResponse(responseCode = "400", description = "필수 항목 누락·형식 오류")
+    @ApiResponse(responseCode = "403", description = "게스트")
+    @PutMapping("/setup")
+    public ResponseEntity<ProfileResponse> setupProfile(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @Valid @RequestBody ProfileSetupRequest request
+    ) {
+        return ResponseEntity.ok(profileService.setupProfile(securityUser.getMember(), request));
+    }
+
     // 계정 정보 조회 (성별, 생년월일, 소셜 연동 상태)
     @GetMapping("/account")
     public ResponseEntity<AccountInfoResponse> getAccountInfo(
@@ -86,6 +104,8 @@ public class ProfileController {
         profileService.validateNotGuest(securityUser.getMember());
 
         request.getSession().setAttribute(OAuth2MemberService.LINK_SESSION_ATTRIBUTE, securityUser.getMember().getId());
+        // 웹 연동: 중단된 앱 연동 속성이 남아 있어도 앱으로 복귀하지 않게 함
+        AppOAuth2Service.clearAppSession(request.getSession());
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create("/oauth2/authorization/" + provider))
                 .build();

@@ -21,6 +21,7 @@ import com.ll.demo.domain.quote.repository.QuoteRepository;
 import com.ll.demo.domain.friendship.friendship.repository.FriendshipRepository;
 import com.ll.demo.domain.profile.profile.dto.AccountInfoResponse;
 import com.ll.demo.domain.profile.profile.dto.ProfileResponse;
+import com.ll.demo.domain.profile.profile.dto.ProfileSetupRequest;
 import com.ll.demo.domain.profile.profile.dto.ProfileUpdateRequest;
 import com.ll.demo.domain.profile.profile.dto.AccountUpdateRequest;
 import com.ll.demo.domain.friendship.friendship.type.FriendshipStatus;
@@ -100,6 +101,23 @@ public class ProfileService {
             validateProfileImageValue(request.profileImage());
             persistentMember.setProfileImage(request.profileImage());
         }
+
+        return getMyProfile(persistentMember);
+    }
+
+    // 첫 프로필 설정: 필수 항목(닉네임·출생년도) 저장에 성공하면 완료 처리
+    public ProfileResponse setupProfile(Member member, ProfileSetupRequest request) {
+        validateNotGuest(member);
+
+        Member persistentMember = memberRepository.findById(member.getId())
+                .orElseThrow(() -> new GlobalException("404", "사용자를 찾을 수 없습니다."));
+
+        persistentMember.setNickname(request.nickname());
+        persistentMember.setBirthYear(request.birthYear());
+        if (request.introduction() != null) {
+            persistentMember.setIntroduction(request.introduction());
+        }
+        persistentMember.setProfileCompleted(true);
 
         return getMyProfile(persistentMember);
     }

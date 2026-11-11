@@ -32,7 +32,7 @@ public class Rq {
         memberResolved = true;
 
         String accessToken = getCookieValue("accessToken", null);
-        if (accessToken == null || !authTokenService.validateToken(accessToken)) {
+        if (accessToken == null || !authTokenService.validateAccessToken(accessToken)) {
             return null;
         }
 
@@ -97,6 +97,13 @@ public class Rq {
                 .findFirst()
                 .map(Cookie::getValue)
                 .orElse(defaultValue);
+    }
+
+    // 앱 요청 식별 헤더: 값이 app이면 refresh 토큰을 본문으로 주고받고 토큰 쿠키를 쓰지 않음
+    public static final String CLIENT_TYPE_HEADER = "X-Client-Type";
+
+    public boolean isAppClient() {
+        return "app".equalsIgnoreCase(request.getHeader(CLIENT_TYPE_HEADER));
     }
 
     public String getCurrentUrlPath() {

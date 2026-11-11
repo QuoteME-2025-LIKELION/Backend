@@ -92,4 +92,9 @@ public class Member extends BaseTime {
 
     @Column(nullable = true)
     private LocalDate aiUsageDate;
+
+    // 첫 프로필 설정(PUT /api/profile/setup) 완료 여부. 기존 행은 DDL 기본값 true, 신규 가입은 코드에서 false
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    @Builder.Default
+    private boolean profileCompleted = true;
 }

@@ -98,6 +98,7 @@ public class MemberService {
                 .password(passwordEncoder.encode(password))
                 .nickname(nickname)
                 .birthYear(birthYear)
+                .profileCompleted(false)
                 .build();
 
         memberRepository.save(member);
@@ -110,9 +111,12 @@ public class MemberService {
         return memberRepository.findById(id).orElseThrow(() -> new GlobalException("400-2", "회원이 존재하지 않습니다."));
     }
 
-    // RefreshToken 메서드
+    // RefreshToken 메서드 (typ=access 토큰은 DB와 일치해도 refresh로 받지 않음)
     @Transactional
     public java.util.Optional<Member> findByRefreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank() || !authTokenService.isRefreshTokenType(refreshToken)) {
+            return Optional.empty();
+        }
         return memberRepository.findByRefreshToken(refreshToken);
     }
 
@@ -198,7 +202,7 @@ public class MemberService {
     // 리프레시 토큰 생성 저장
     @Transactional
     public String genRefreshToken(Member member) {
-        String refreshToken = authTokenService.genToken(member, 60 * 60 * 24 * 30); // 30일
+        String refreshToken = authTokenService.genRefreshToken(member, 60 * 60 * 24 * 30); // 30일
         member.setRefreshToken(refreshToken);
         // 강제로 DB반영
         memberRepository.saveAndFlush(member);
@@ -302,6 +306,7 @@ public class MemberService {
                 .profileImage(profileImage)
                 .provider(provider)
                 .providerId(providerId)
+                .profileCompleted(false)
                 .build();
         Member saved = memberRepository.save(newMember);
         ensureSocialAccount(saved, provider, providerId);
@@ -311,6 +316,13 @@ public class MemberService {
     // 계정 연동: 이미 같은 회원에게 연결되어 있으면 아무것도 하지 않음
     @Transactional
     public Member linkSocialAccount(Long memberId, MemberProvider provider, String providerId) {
+        Member member = validateSocialLink(memberId, provider, providerId);
+        ensureSocialAccount(member, provider, providerId);
+        return member;
+    }
+
+    // 연동 제한 검사만 하고 저장하지 않음 (앱 연동은 확정 API에서 저장)
+    public Member validateSocialLink(Long memberId, MemberProvider provider, String providerId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new OAuth2AuthenticationException(
                         new OAuth2Error(SOCIAL_ACCOUNT_NOT_FOUND), "존재하지 않는 계정입니다."));
@@ -336,8 +348,6 @@ public class MemberService {
             throw new OAuth2AuthenticationException(
                     new OAuth2Error(SOCIAL_PROVIDER_ALREADY_LINKED), "같은 소셜 서비스의 다른 계정이 이미 연결되어 있습니다.");
         }
-
-        ensureSocialAccount(member, provider, providerId);
         return member;
     }
 

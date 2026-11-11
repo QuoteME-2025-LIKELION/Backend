@@ -21,12 +21,14 @@ public class OAuth2MemberService extends DefaultOAuth2UserService {
 
     public static final String LINK_SESSION_ATTRIBUTE = "OAUTH2_LINK_MEMBER_ID";
     public static final String LINKED_PROVIDER_ATTRIBUTE = "OAUTH2_LINKED_PROVIDER";
+    public static final String LINKED_PROVIDER_ID_ATTRIBUTE = "OAUTH2_LINKED_PROVIDER_ID";
 
     private final MemberService memberService;
     private final HttpServletRequest request;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        boolean appLink = AppOAuth2Service.isAppLinkSession(request.getSession(false));
         Long linkMemberId = consumeLinkMemberId();
         OAuth2User oAuth2User = super.loadUser(userRequest);
         Map<String, Object> attributes = oAuth2User.getAttributes();
@@ -70,6 +72,13 @@ public class OAuth2MemberService extends DefaultOAuth2UserService {
         }
 
         String loginMode = consumeLoginMode();
+        if (linkMemberId != null && appLink) {
+            // 앱 연동: 제한만 검사하고 저장은 확정 API에서 (티켓 유출 시 남의 소셜 계정이 연결되는 것을 막음)
+            Member member = memberService.validateSocialLink(linkMemberId, provider, providerId);
+            request.setAttribute(LINKED_PROVIDER_ATTRIBUTE, registrationId);
+            request.setAttribute(LINKED_PROVIDER_ID_ATTRIBUTE, providerId);
+            return new CustomOAuth2User(member, attributes, false);
+        }
         if (linkMemberId != null) {
             Member member = memberService.linkSocialAccount(linkMemberId, provider, providerId);
             request.setAttribute(LINKED_PROVIDER_ATTRIBUTE, registrationId);

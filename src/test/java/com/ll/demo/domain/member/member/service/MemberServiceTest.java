@@ -75,7 +75,7 @@ class MemberServiceTest {
     void genRefreshToken_Update() {
         Member member = Member.builder().email("test@test.com").build();
         String mockToken = "mock_token";
-        when(authTokenService.genToken(any(Member.class), anyInt())).thenReturn(mockToken);
+        when(authTokenService.genRefreshToken(any(Member.class), anyInt())).thenReturn(mockToken);
 
         String token = memberService.genRefreshToken(member);
 
